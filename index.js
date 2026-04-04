@@ -14,8 +14,8 @@ const { initializeTables } = require('./utils/supabase');
 // 🌸 Lavalink Configuration (Public Nodes) ───────────
 const Nodes = [
   { name: 'Jirayu', url: 'lavalink.jirayu.net:13592', auth: 'youshallnotpass', secure: false },
-  { name: 'DevamOP', url: 'lavalink.devamop.in:443', auth: 'DevamOP', secure: true },
-  { name: 'OopsWTF', url: 'lavalink.oops.wtf:80', auth: 'www.lavalink.oops.wtf', secure: false }
+  { name: 'Freelink1', url: 'freelink1.oscb.eu.org:80', auth: 'freelink', secure: false },
+  { name: 'Freelink2', url: 'lavalink.lexnet.cc:443', auth: 'lexn3tl@val!nk', secure: true }
 ];
 
 // ── Heartbeat Server (Prevents Koyeb from sleeping) ───────────
