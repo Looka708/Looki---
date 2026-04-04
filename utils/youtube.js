@@ -1,14 +1,35 @@
 const { Innertube, UniversalCache } = require('youtubei.js');
+const fs = require('fs');
+const path = require('path');
 const yts = require('yt-search');
 let yt;
 
+function parseCookies(filePath) {
+    if (!fs.existsSync(filePath)) return null;
+    const content = fs.readFileSync(filePath, 'utf8');
+    return content.split('\n')
+        .filter(line => line && !line.startsWith('#'))
+        .map(line => {
+            const parts = line.split('\t');
+            return parts.length >= 7 ? `${parts[5]}=${parts[6]}` : null;
+        })
+        .filter(Boolean)
+        .join('; ');
+}
+
 async function getYouTubeClient(forceNew = false) {
     if (!yt || forceNew) {
+        const cookiePath = path.join(__dirname, '../Cookies.txt');
+        const cookie = parseCookies(cookiePath);
+        
         yt = await Innertube.create({
             cache: new UniversalCache(false),
             generate_session_locally: true,
-            client_type: 'TV' // TV client is often more resilient to Bot-Guard
+            client_type: 'IOS',
+            cookie: cookie || undefined
         });
+
+        if (cookie) console.log('🌸 [YouTube] Cookies.txt loaded for youtubei.js');
     }
     return yt;
 }
@@ -68,5 +89,6 @@ module.exports = {
     getYouTubeClient,
     getRobustYouTubeStream,
     getRobustYouTubeInfo,
-    getYouTubeSearch
+    getYouTubeSearch,
+    parseCookies
 };
