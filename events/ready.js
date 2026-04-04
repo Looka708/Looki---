@@ -1,7 +1,9 @@
+const play = require('play-dl');
+
 module.exports = {
-  name: 'ready',
+  name: 'clientReady',
   once: true,
-  execute(client) {
+  async execute(client) {
     console.log('✦ Looki is online! 🌸');
     
     // Set initial status
@@ -17,5 +19,11 @@ module.exports = {
       client.user.setActivity(status.name, { type: status.type });
       currentStatus = (currentStatus + 1) % statuses.length;
     }, 30000); // Change every 30 seconds
+
+    try {
+        await play.setToken({}); // Optional: You might need spotify credentials in `.env` for production but anon usually works
+    } catch(e) {
+        console.error("Play-dl init optional auth error:", e);
+    }
   },
-};
+};

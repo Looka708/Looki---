@@ -45,12 +45,12 @@ export function CardHeader({ title, subtitle, action }: CardHeaderProps) {
   );
 }
 
-interface CardBodyProps {
+interface CardBodyProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
-export function CardBody({ children }: CardBodyProps) {
-  return <div className="space-y-4">{children}</div>;
+export function CardBody({ children, className = '', ...props }: CardBodyProps) {
+  return <div className={`space-y-4 ${className}`} {...props}>{children}</div>;
 }
 
 interface CardFooterProps {

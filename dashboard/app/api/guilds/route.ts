@@ -35,7 +35,7 @@ async function checkBotInGuild(guildId: string): Promise<boolean> {
   }
 }
 
-export async function GET() {
+export async function GET(_request: Request) {
   try {
     const session = await getServerSession(authOptions);
 

@@ -1,3 +1,5 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -8,6 +10,9 @@ const nextConfig = {
         hostname: 'cdn.discordapp.com',
       },
     ],
+  },
+  turbopack: {
+    root: path.resolve(__dirname, '..'),
   },
 };
 

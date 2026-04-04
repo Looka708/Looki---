@@ -1,335 +1,447 @@
 'use client';
 
 import { Breadcrumb } from '@/components/layout/Topnav';
-import { GlassCard, CardHeader, CardBody, StatCard, Badge, Button } from '@/components/ui';
+import { GlassCard, CardBody, StatCard, Badge, Button } from '@/components/ui';
 import { CuteTable } from '@/components/CuteComponents';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { FiAlertCircle, FiShield, FiVolume2, FiX } from 'react-icons/fi';
+import { FiAlertCircle, FiShield, FiTrendingUp, FiActivity, FiUsers, FiMessageCircle, FiCommand, FiArrowUpRight, FiZap, FiRefreshCw } from 'react-icons/fi';
+import { useParams } from 'next/navigation';
 
-const activityChartData = [
-  { hour: '00', messages: 45, commands: 12 },
-  { hour: '04', messages: 32, commands: 8 },
-  { hour: '08', messages: 120, commands: 35 },
-  { hour: '12', messages: 280, commands: 78 },
-  { hour: '16', messages: 350, commands: 105 },
-  { hour: '20', messages: 290, commands: 82 },
-];
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+  }
+};
 
-const leaderboardData = [
-  { rank: 1, name: 'Alice#0001', level: 42, xp: 8420, progress: 84 },
-  { rank: 2, name: 'Bob#0002', level: 38, xp: 7190, progress: 72 },
-  { rank: 3, name: 'Charlie#0003', level: 35, xp: 6540, progress: 65 },
-  { rank: 4, name: 'Diana#0004', level: 32, xp: 5890, progress: 59 },
-  { rank: 5, name: 'Eve#0005', level: 28, xp: 4820, progress: 48 },
-];
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
-const recentActions = [
-  { id: '042', type: 'BAN', user: 'BadUser#0001', mod: 'Mod#0001', reason: 'spamming', time: '2h ago' },
-  { id: '041', type: 'WARN', user: 'NewUser#0002', mod: 'Mod#0002', reason: 'bad vibes', time: '3h ago' },
-  { id: '040', type: 'MUTE', user: 'Rowdy#0003', mod: 'Mod#0001', reason: '1h cooldown', time: '5h ago' },
-  { id: '039', type: 'KICK', user: 'Temp#0004', mod: 'Mod#0003', reason: 'trial over', time: '1d ago' },
-];
+interface DashboardData {
+  guild: {
+    name: string;
+    icon: string | null;
+    memberCount: number;
+    presenceCount: number;
+  };
+  stats: {
+    members: number;
+    active: number;
+    commands: number;
+    warnings: number;
+  };
+  timeline: { time: string; warnings: number }[];
+  leaderboard: { rank: number; id: string; name: string; level: number; xp: number; progress: number }[];
+  recentActions: { id: string; type: string; user: string; userId: string; mod: string; reason: string; time: string }[];
+  distribution: { name: string; value: number; color: string }[];
+}
 
-const messageDistributionData = [
-  { name: 'General', value: 4500, color: '#FFB6C1' },
-  { name: 'Gaming', value: 3200, color: '#C8A2C8' },
-  { name: 'Music', value: 2100, color: '#FFCBA4' },
-  { name: 'Art', value: 1800, color: '#B5EAD7' },
-  { name: 'Off-topic', value: 1200, color: '#AEC6CF' },
-];
-
-const COLORS = ['#FFB6C1', '#C8A2C8', '#FFCBA4', '#B5EAD7', '#AEC6CF'];
-
-export default function DashboardOverview({ params }: { params: { guildId: string } }) {
-  const { data: session } = useSession();
-  const [guild, setGuild] = useState<{ name: string; icon: string | null; approximate_member_count?: number; approximate_presence_count?: number } | null>(null);
+export default function DashboardOverview() {
+  const params = useParams();
+  const guildId = params.guildId as string;
+  
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [guildId, setGuildId] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Resolve params to get guildId
-  useEffect(() => {
-    const resolveParams = async () => {
-      const resolved = await Promise.resolve(params);
-      setGuildId(resolved?.guildId || '');
-    };
-    resolveParams();
-  }, [params]);
-
-  // Fetch guild info
-  useEffect(() => {
-    async function fetchGuildInfo() {
-      try {
-        // Await params if it's a promise
-        const resolvedParams = await Promise.resolve(params);
-        const resolvedGuildId = resolvedParams?.guildId;
-        
-        if (!resolvedGuildId) {
-          setLoading(false);
-          return;
-        }
-
-        const res = await fetch(`/api/guilds/${resolvedGuildId}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.guild) {
-            setGuild(data.guild);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch guild details', error);
-      } finally {
-        setLoading(false);
+  const fetchData = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    
+    try {
+      const res = await fetch(`/api/discord/${guildId}/overview`);
+      if (!res.ok) throw new Error('Failed to fetch dashboard data');
+      const json = await res.json();
+      if (json.success) {
+        setData(json.data);
+        setError(null);
+      } else {
+        throw new Error(json.error || 'Failed to fetch data');
       }
+    } catch (err: any) {
+      console.error('Error fetching dashboard data:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    fetchGuildInfo();
-  }, [params]);
+  };
+
+  useEffect(() => {
+    if (guildId) {
+      fetchData();
+    }
+  }, [guildId]);
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-60px)] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-border-subtle border-t-pink rounded-full animate-spin" />
+      <div className="min-h-[calc(100vh-60px)] flex flex-col items-center justify-center space-y-4">
+        <div className="w-12 h-12 border-2 border-border-subtle border-t-pink rounded-full animate-spin shadow-glow-pink" />
+        <p className="text-sm font-medium text-text-secondary animate-pulse">Initializing Looki Dashboard...</p>
       </div>
     );
   }
 
-  const iconUrl = guild?.icon;
-  
-  return (
-    <div className="min-h-screen bg-bg-base relative z-5 animate-fade-in">
-      <div className="px-8 pt-8">
-        <Breadcrumb items={[{ label: 'Overview' }]} />
-      </div>
-
-      <div className="px-8 py-6">
-        <h1 className="text-4xl font-display font-bold text-text-primary mb-1">
-          overview <span className="text-pink">✦</span>
-        </h1>
-        <p className="text-sm text-text-secondary font-script">welcome back, manager</p>
-      </div>
-
-      <div className="px-8 pb-8 animate-slide-in-up">
-        <div
-          className="h-44 rounded-2xl bg-gradient-to-r from-pink/20 to-lavender/20 border border-border-default p-8 flex items-end relative overflow-hidden"
-          style={{
-            backgroundImage: `linear-gradient(to right, rgba(13,12,17,0.9) 0%, transparent 60%)`,
-          }}
+  if (error || !data) {
+    return (
+      <div className="min-h-[calc(100vh-60px)] flex flex-col items-center justify-center space-y-4 p-8 text-center">
+        <div className="text-6xl mb-4">😿</div>
+        <h2 className="text-2xl font-display font-bold text-text-primary">Something went wrong</h2>
+        <p className="text-text-secondary max-w-md">{error || 'Could not load data for this server. Please try again later.'}</p>
+        <Button 
+          variant="primary" 
+          onClick={() => fetchData()} 
+          className="mt-4 flex items-center gap-2"
         >
-          <div className="relative z-10">
-            <div className="flex items-center gap-4 mb-4">
-              {iconUrl ? (
-                <img src={iconUrl} alt={guild?.name} className="w-20 h-20 rounded-full ring-4 ring-pink/20 shadow-glow flex-shrink-0" />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink to-lavender ring-4 ring-pink/20 flex items-center justify-center text-3xl shadow-glow">
-                  🌸
+          <FiRefreshCw /> Try Again
+        </Button>
+      </div>
+    );
+  }
+
+  const { guild, stats, timeline, leaderboard, recentActions, distribution } = data;
+
+  return (
+    <div className="min-h-screen bg-bg-base relative z-5 overflow-hidden font-body">
+      {/* Background Ambience */}
+      <div className="bg-aww pointer-events-none fixed inset-0 opacity-40 mix-blend-multiply">
+        <div className="blob blob1" />
+        <div className="blob blob2" />
+        <div className="blob blob3" />
+      </div>
+
+      <div className="relative z-10 px-6 sm:px-10 pt-10 flex justify-between items-center">
+        <Breadcrumb items={[{ label: 'Overview' }]} />
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => fetchData(true)}
+          disabled={refreshing}
+          className="text-xs flex items-center gap-2 bg-white/30 backdrop-blur-sm border-white/60"
+        >
+          <FiRefreshCw className={refreshing ? 'animate-spin' : ''} />
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
+      </div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 px-6 sm:px-10 py-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6"
+      >
+        <div>
+          <h1 className="text-4xl sm:text-5xl font-display font-semibold tracking-tight text-text-primary mb-2 flex items-center gap-3">
+            hello, looksy <span className="text-pink animate-pulse-glow inline-block">✿</span>
+          </h1>
+          <p className="text-base text-text-secondary font-script text-xl opacity-80">your guild is blooming today</p>
+        </div>
+      </motion.div>
+
+      <motion.div 
+        variants={containerVariants} 
+        initial="hidden" 
+        animate="visible" 
+        className="relative z-10 px-6 sm:px-10 pb-8 flex flex-col gap-8"
+      >
+        {/* Dynamic Hero Panel */}
+        <motion.div variants={itemVariants} className="group cursor-default">
+          <div className="relative h-56 rounded-3xl overflow-hidden bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg hover:shadow-xl hover:border-pink/30 transition-all duration-500 flex items-center p-8 sm:p-12">
+            
+            <div className="absolute inset-0 bg-gradient-to-r from-pink/10 via-lavender/5 to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-700" />
+
+            <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-center gap-6 w-full">
+              <motion.div 
+                whileHover={{ scale: 1.05, rotate: -2 }} 
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                className="relative"
+              >
+                {guild.icon ? (
+                  <img src={guild.icon} alt={guild.name} className="w-28 h-28 sm:w-32 sm:h-32 rounded-full ring-4 ring-white shadow-xl flex-shrink-0 object-cover" />
+                ) : (
+                  <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-pink to-lavender ring-4 ring-white flex items-center justify-center text-5xl shadow-xl text-white">
+                    {guild.name.charAt(0)}
+                  </div>
+                )}
+                <div className="absolute -bottom-2 -right-2 bg-mint text-white text-xs font-bold px-3 py-1 rounded-full shadow-md border-2 border-white flex items-center gap-1">
+                  <FiZap className="w-3 h-3" /> Online
                 </div>
-              )}
-              <div>
-                <h2 className="text-3xl font-display font-bold">{guild?.name || 'Unknown Server'}</h2>
-                <p className="text-sm text-text-secondary mt-1">
-                  Ready to manage via Looki
-                </p>
+              </motion.div>
+
+              <div className="flex-1 text-center sm:text-left">
+                <h2 className="text-3xl sm:text-4xl font-display font-semibold text-text-primary tracking-tight">{guild.name}</h2>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-3">
+                   <div className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full bg-white/60 text-text-secondary border border-black/5">
+                      <FiUsers className="text-pink" /> 
+                      <span>{guild.memberCount.toLocaleString()} Members</span>
+                   </div>
+                   <div className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full bg-white/60 text-text-secondary border border-black/5">
+                      <FiActivity className="text-mint" /> 
+                      <span>{guild.presenceCount.toLocaleString()} Active</span>
+                   </div>
+                </div>
+              </div>
+
+              <div className="hidden lg:block relative group-hover:translate-x-1 transition-transform duration-300">
+                <a href={`https://discord.com/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_BOT_ID}&permissions=8&scope=bot&guild_id=${guildId}`} target="_blank" rel="noreferrer">
+                  <Button variant="primary" className="shadow-glow-pink">
+                    Invite Bot <FiArrowUpRight className="inline ml-1" />
+                  </Button>
+                </a>
               </div>
             </div>
+            
+            <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-white/40 to-transparent pointer-events-none" />
           </div>
-          <a href={`https://discord.com/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID}&permissions=8&scope=bot&guild_id=${guildId}`} target="_blank" rel="noreferrer">
-            <button className="absolute top-6 right-6 btn-ghost text-sm border-pink/50 hover:bg-pink hover:text-bg-void transition-colors">
-              Manage Server Invite
-            </button>
-          </a>
-        </div>
-      </div>
+        </motion.div>
 
-      <div className="px-8 pb-8 stagger-container">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <motion.div className="animate-slide-in-up">
-            <StatCard icon="👥" label="Members" value={guild?.approximate_member_count?.toString() || "1,340"} trend={12} variant="default" />
-          </motion.div>
-          <motion.div className="animate-slide-in-up" style={{ animationDelay: '50ms' }}>
-            <StatCard icon="⚡" label="Active" value={guild?.approximate_presence_count?.toString() || "520"} trend={5} variant="success" />
-          </motion.div>
-          <motion.div className="animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-            <StatCard icon="⚠️" label="Warnings" value="28" trend={-3} variant="info" />
-          </motion.div>
-          <motion.div className="animate-slide-in-up" style={{ animationDelay: '150ms' }}>
-            <StatCard icon="💬" label="Commands Run" value="891" trend={23} variant="default" />
-          </motion.div>
-        </div>
-      </div>
-
-      <div className="px-8 pb-8 flex flex-wrap gap-3 animate-fade-in" style={{ animationDelay: '300ms' }}>
-        <Link href={`/dashboard/${params.guildId}/giveaways`}>
-          <Button variant="primary">+ Create Giveaway</Button>
-        </Link>
-        <Link href={`/dashboard/${params.guildId}/moderation`}>
-          <Button variant="ghost">🛡️ Moderation</Button>
-        </Link>
-        <Link href={`/dashboard/${params.guildId}/settings`}>
-          <Button variant="ghost">⚙️ Settings</Button>
-        </Link>
-      </div>
-
-      <div className="px-8 pb-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <GlassCard>
-            <CardHeader
-              title="recent actions ✦"
-              action={<Link href={`/dashboard/${guildId}/moderation`} className="text-sm text-pink hover:text-pink-dim">View All →</Link>}
+        {/* Stats Grid */}
+        <motion.div variants={containerVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <motion.div variants={itemVariants}>
+            <StatCard 
+              icon={<FiUsers className="text-xl" />} 
+              label="Total Members" 
+              value={stats.members.toLocaleString()} 
+              variant="default" 
             />
-            <CardBody>
-              <CuteTable
-                columns={[
-                  { key: 'id', label: '#', width: '60px' },
-                  { 
-                    key: 'type', 
-                    label: 'Type',
-                    icon: <FiShield />,
-                    render: (value) => (
-                      <Badge type={value.toLowerCase() === 'ban' ? 'ban' : value.toLowerCase() === 'kick' ? 'kick' : value.toLowerCase() === 'mute' ? 'mute' : 'warn'}>
-                        {value}
-                      </Badge>
-                    )
-                  },
-                  { key: 'user', label: 'User' },
-                  { key: 'mod', label: 'Moderator' },
-                  { key: 'reason', label: 'Reason' },
-                  { 
-                    key: 'time', 
-                    label: 'Time',
-                    icon: <FiAlertCircle />
-                  },
-                ]}
-                data={recentActions}
-                emptyMessage="No recent actions"
-                striped
-              />
-            </CardBody>
-          </GlassCard>
-
-          <GlassCard>
-            <CardHeader title="server activity ✦" />
-            <CardBody>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={activityChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,182,193,0.1)" />
-                  <XAxis dataKey="hour" stroke="#9B8FAE" />
-                  <YAxis stroke="#9B8FAE" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#13111A',
-                      border: '1px solid rgba(255,182,193,0.14)',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="messages"
-                    stroke="#FFB6C1"
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: '#FFB6C1' }}
-                    activeDot={{ r: 6 }}
-                    name="Messages"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="commands"
-                    stroke="#C8A2C8"
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: '#C8A2C8' }}
-                    activeDot={{ r: 6 }}
-                    name="Commands"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardBody>
-          </GlassCard>
-        </div>
-
-        <div className="space-y-8">
-          <GlassCard>
-            <CardHeader
-              title="top members ✦"
-              action={<Link href={`/dashboard/${params.guildId}/leveling`} className="text-sm text-pink hover:text-pink-dim">Full Leaderboard →</Link>}
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <StatCard 
+              icon={<FiActivity className="text-xl" />} 
+              label="Active Now" 
+              value={stats.active.toLocaleString()} 
+              variant="success" 
             />
-            <CardBody>
-              <div className="space-y-3">
-                {leaderboardData.map((member) => (
-                  <div key={member.rank} className="flex items-center gap-3 pb-3 border-b border-border-subtle last:border-b-0">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-br from-pink to-lavender text-bg-base">
-                      {member.rank}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary truncate">{member.name}</p>
-                      <div className="text-xs text-text-tertiary">Lv.{member.level}</div>
-                    </div>
-                    <p className="text-xs text-text-secondary font-mono">{member.xp.toLocaleString()} XP</p>
-                  </div>
-                ))}
-              </div>
-            </CardBody>
-          </GlassCard>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <StatCard 
+              icon={<FiCommand className="text-xl" />} 
+              label="Commands Today" 
+              value={stats.commands.toLocaleString()} 
+              variant="default" 
+            />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <StatCard 
+              icon={<FiAlertCircle className="text-xl" />} 
+              label="Warnings Issued" 
+              value={stats.warnings.toLocaleString()} 
+              variant="info" 
+            />
+          </motion.div>
+        </motion.div>
 
-          <GlassCard>
-            <CardHeader title="message distribution" />
-            <CardBody>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={messageDistributionData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {messageDistributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#13111A',
-                      border: '1px solid rgba(255,182,193,0.14)',
-                      borderRadius: '8px',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardBody>
-          </GlassCard>
+        {/* Quick Actions */}
+        <motion.div variants={itemVariants} className="flex flex-wrap gap-4 pt-2">
+          <Link href={`/dashboard/${guildId}/giveaways`} className="transition-transform hover:-translate-y-0.5">
+            <Button variant="primary" className="rounded-2xl px-6 font-medium shadow-glow-pink h-11">
+              ✨ Create Giveaway
+            </Button>
+          </Link>
+          <Link href={`/dashboard/${guildId}/moderation`} className="transition-transform hover:-translate-y-0.5">
+            <Button variant="ghost" className="rounded-2xl px-6 h-11 bg-white/50 backdrop-blur-md border-white/60 hover:bg-white/80 text-text-primary border">
+              <FiShield className="mr-2 inline" /> Moderation
+            </Button>
+          </Link>
+          <Link href={`/dashboard/${guildId}/settings`} className="transition-transform hover:-translate-y-0.5">
+            <Button variant="ghost" className="rounded-2xl px-6 h-11 bg-white/50 backdrop-blur-md border-white/60 hover:bg-white/80 text-text-primary border">
+               Settings
+            </Button>
+          </Link>
+        </motion.div>
 
-          <GlassCard>
-            <CardHeader title="bot health ✦" />
-            <CardBody>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm text-text-secondary">Uptime</span>
-                    <span className="text-sm font-medium text-text-primary">99.8%</span>
-                  </div>
-                  <div className="w-full h-2 bg-bg-overlay rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-mint to-mint/50 rounded-full" style={{ width: '99.8%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm text-text-secondary">Latency</span>
-                    <span className="text-sm font-medium text-text-primary">42ms 🟢</span>
-                  </div>
-                </div>
-                <div className="pt-2">
-                  <p className="text-xs text-text-secondary mb-1">Commands today</p>
-                  <p className="text-2xl font-display font-bold text-text-primary">891</p>
-                </div>
+        {/* Charts and Tables */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-12 mt-6">
+          <motion.div variants={itemVariants} className="lg:col-span-2 space-y-8">
+            <GlassCard className="rounded-3xl border-white/60 bg-white/50 backdrop-blur-xl shadow-md overflow-hidden">
+              <div className="p-6 sm:px-8 border-b border-border-subtle/50 bg-white/30 flex items-center justify-between">
+                 <h3 className="font-display text-xl font-semibold text-text-primary tracking-tight flex items-center gap-2">
+                   <FiActivity className="text-pink" /> 24h Warning Activity
+                 </h3>
+                 <span className="text-xs font-semibold uppercase tracking-widest text-text-tertiary">Realtime</span>
               </div>
-            </CardBody>
-          </GlassCard>
+              <CardBody className="p-6 sm:p-8">
+                <div className="h-[320px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={timeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorWarnings" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#E85D75" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#E85D75" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
+                      <XAxis dataKey="time" stroke="#949494" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                      <YAxis stroke="#949494" fontSize={12} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                          backdropFilter: 'blur(10px)',
+                          border: '1px solid rgba(232, 93, 117, 0.2)',
+                          borderRadius: '12px',
+                          boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                          color: '#2D2D2D',
+                        }}
+                        itemStyle={{ color: '#2D2D2D', fontWeight: 500 }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="warnings"
+                        stroke="#E85D75"
+                        strokeWidth={4}
+                        fillOpacity={1}
+                        fill="url(#colorWarnings)"
+                        name="Warnings Issued"
+                        activeDot={{ r: 6, strokeWidth: 0, fill: '#E85D75', className: "shadow-glow-pink" }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardBody>
+            </GlassCard>
+
+            <GlassCard className="rounded-3xl border-white/60 bg-white/50 backdrop-blur-xl shadow-md overflow-hidden">
+              <div className="p-6 sm:px-8 border-b border-border-subtle/50 bg-white/30 flex items-center justify-between">
+                 <h3 className="font-display text-xl font-semibold text-text-primary tracking-tight flex items-center gap-2">
+                   <FiShield className="text-lavender" /> Recent Actions
+                 </h3>
+                 <Link href={`/dashboard/${guildId}/moderation`} className="text-sm font-medium text-pink hover:text-pink-dim transition-colors group">
+                    View All <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+                 </Link>
+              </div>
+              <CardBody className="p-0">
+                <CuteTable
+                  columns={[
+                    { 
+                      key: 'type', 
+                      label: 'Action',
+                      render: (value) => (
+                        <Badge type={value.toLowerCase() === 'ban' ? 'ban' : value.toLowerCase() === 'kick' ? 'kick' : value.toLowerCase() === 'mute' ? 'mute' : 'warn'}>
+                          {value}
+                        </Badge>
+                      )
+                    },
+                    { key: 'user', label: 'User Focus' },
+                    { key: 'mod', label: 'Moderator' },
+                    { key: 'reason', label: 'Reason' },
+                    { 
+                      key: 'time', 
+                      label: 'Time',
+                      icon: <FiTrendingUp />
+                    },
+                  ]}
+                  data={recentActions}
+                  emptyMessage="No recent actions recorded."
+                  striped
+                />
+              </CardBody>
+            </GlassCard>
+          </motion.div>
+
+          {/* Right column */}
+          <motion.div variants={itemVariants} className="space-y-8">
+            <GlassCard className="rounded-3xl border-white/60 bg-white/50 backdrop-blur-xl shadow-md overflow-hidden">
+              <div className="p-6 border-b border-border-subtle/50 bg-white/30 flex items-center justify-between">
+                 <h3 className="font-display text-xl font-semibold text-text-primary tracking-tight">XP Leaderboard</h3>
+              </div>
+              <CardBody className="p-6">
+                <div className="space-y-4">
+                  {leaderboard.length > 0 ? leaderboard.map((member, idx) => (
+                    <motion.div 
+                      key={member.id} 
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 + (idx * 0.1) }}
+                      className="group flex items-center gap-4 p-3 -mx-3 rounded-2xl hover:bg-white/60 transition-colors"
+                    >
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
+                        idx === 0 ? 'bg-gradient-to-br from-yellow-300 to-yellow-500 border-yellow-200 text-yellow-900' :
+                        idx === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 border-gray-200 text-gray-800' :
+                        idx === 2 ? 'bg-gradient-to-br from-orange-300 to-orange-500 border-orange-200 text-orange-900' :
+                        'bg-white text-text-secondary border-border-subtle'
+                      }`}>
+                        #{member.rank}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-text-primary truncate">{member.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                           <div className="flex-1 h-1.5 bg-black/5 rounded-full overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-pink to-lavender rounded-full" style={{ width: `${member.progress}%` }} />
+                           </div>
+                           <div className="text-[10px] font-bold text-text-tertiary">LVL {member.level}</div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )) : (
+                    <div className="text-center py-8 text-text-tertiary">
+                      No active users found.
+                    </div>
+                  )}
+                </div>
+              </CardBody>
+            </GlassCard>
+
+            <GlassCard className="rounded-3xl border-white/60 bg-white/50 backdrop-blur-xl shadow-md overflow-hidden">
+              <div className="p-6 border-b border-border-subtle/50 bg-white/30">
+                 <h3 className="font-display text-xl font-semibold text-text-primary tracking-tight flex items-center gap-2">
+                    <FiMessageCircle className="text-peach" /> Server Channels
+                 </h3>
+              </div>
+              <CardBody className="p-6 flex flex-col items-center">
+                <div className="h-[220px] w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={distribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={85}
+                        paddingAngle={5}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {distribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          border: 'none',
+                          borderRadius: '12px',
+                          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                          fontSize: '13px'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 m-auto w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-inner pt-1">
+                     <span className="text-xl font-display font-medium text-text-primary">{distribution.reduce((a, b) => a + b.value, 0)}</span>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap justify-center gap-3 mt-4">
+                  {distribution.map((item) => (
+                    <div key={item.name} className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                      {item.name}
+                    </div>
+                  ))}
+                </div>
+              </CardBody>
+            </GlassCard>
+            
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

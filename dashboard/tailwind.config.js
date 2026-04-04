@@ -7,7 +7,29 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        /* Backgrounds - Light Theme */
+        /* Backgrounds - Landing Theme (Soft Noir Sakura) */
+        'landing-void': 'var(--void)',
+        'landing-abyss': 'var(--abyss)',
+        'landing-depth': 'var(--depth)',
+        'landing-surface': 'var(--surface)',
+        'landing-raised': 'var(--raised)',
+        'landing-mist': 'var(--mist)',
+
+        'sakura-100': 'var(--sakura-100)',
+        'sakura-200': 'var(--sakura-200)',
+        'sakura-300': 'var(--sakura-300)',
+        'sakura-400': 'var(--sakura-400)',
+        'sakura-500': 'var(--sakura-500)',
+        'sakura-600': 'var(--sakura-600)',
+
+        'landing-text-0': 'var(--text-0)',
+        'landing-text-1': 'var(--text-1)',
+        'landing-text-2': 'var(--text-2)',
+        'landing-text-3': 'var(--text-3)',
+        'landing-text-4': 'var(--text-4)',
+        'landing-text-accent': 'var(--text-accent)',
+
+        /* Backgrounds - Light Theme Dashboard (Existing) */
         'bg-void': '#FFFFFF',
         'bg-base': '#F8F7FB',
         'bg-surface': '#FFFFFF',
@@ -45,12 +67,16 @@ module.exports = {
         'accent-pink': '#E85D75',
         'accent-lavender': '#9B6BA8',
         'accent-peach': '#E8A85C',
-        'text-primary': '#2D2D2D',
-        'text-secondary': '#6B6B6B',
         'pink-border': 'rgba(232, 93, 117, 0.2)',
         'pink-glow': 'rgba(232, 93, 117, 0.15)',
       },
       borderColor: {
+        'landing-0': 'var(--border-0)',
+        'landing-1': 'var(--border-1)',
+        'landing-2': 'var(--border-2)',
+        'landing-3': 'var(--border-3)',
+        'landing-hot': 'var(--border-hot)',
+        
         'glass': 'rgba(232,93,117,0.2)',
         'subtle': 'rgba(232,93,117,0.08)',
         'strong': 'rgba(232,93,117,0.3)',
@@ -71,6 +97,13 @@ module.exports = {
         'glass': 'blur(24px)',
       },
       fontFamily: {
+        // Landing Page specific
+        'garamond': ['var(--font-garamond)', 'Georgia', 'serif'],
+        'syne': ['var(--font-syne)', 'sans-serif'],
+        'dm-mono': ['var(--font-dm-mono)', 'monospace'],
+        'italiana': ['var(--font-italiana)', 'serif'],
+        
+        // Existing Dashboard
         'display': ['Playfair Display', 'Georgia', 'serif'],
         'body': ['DM Sans', 'sans-serif'],
         'mono': ['JetBrains Mono', 'monospace'],

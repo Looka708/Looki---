@@ -42,30 +42,28 @@ export default function ModerationPage({ params }: { params: { guildId: string }
   const [selectedAction, setSelectedAction] = useState<ModAction | null>(null);
   const [showPurgeModal, setShowPurgeModal] = useState(false);
   const [purgeCount, setPurgeCount] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [serverName, setServerName] = useState<string>('Unknown Server');
   const guildIdFromParams = params?.guildId ?? '';
   // Fetch real data when guildId is available
-  const [serverName, setServerName] = useState<string>('Unknown Server');
   useEffect(() => {
     const gid = guildIdFromParams;
     if (!gid) return;
-    // Fetch actions from API
-    fetch(`/api/discord/${gid}/moderation/actions`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data?.actions)) {
-          setActions(data.actions);
-        }
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      fetch(`/api/discord/${gid}/moderation/actions`).then((r) => r.json()),
+      fetch(`/api/discord/${gid}/server-info`).then((r) => r.json()),
+    ])
+      .then(([actionsData, serverInfo]) => {
+        if (Array.isArray(actionsData?.actions)) setActions(actionsData.actions);
+        if (serverInfo?.name) setServerName(serverInfo.name);
       })
-      .catch(() => {
-        // ignore fetch errors; keep empty list
-      });
-    // Fetch server info
-    fetch(`/api/discord/${gid}/server-info`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.name) setServerName(data.name);
+      .catch((err) => {
+        setError(err?.message ?? 'Failed to load data');
       })
-      .catch(() => {});
+      .finally(() => setLoading(false));
   }, [guildIdFromParams]);
 
   const filteredActions = actions.filter((action) => {
@@ -110,9 +108,12 @@ export default function ModerationPage({ params }: { params: { guildId: string }
         <h1 className="text-4xl font-display font-bold text-text-primary mb-1 flex items-center gap-2">
           moderation <ShieldIcon className="text-pink" size={22} />
         </h1>
+        <div className="text-sm text-text-secondary mb-1">{serverName}</div>
         <p className="text-sm text-text-secondary font-script">keep your server safe and sound</p>
       </div>
 
+      {loading && <div className="px-8 pb-4 text-sm text-text-secondary">Loading data from Discord...</div>}
+      {error && <div className="px-8 pb-4 text-sm text-red-600">{error}</div>}
       <div className="px-8 pb-8 flex flex-wrap gap-3">
         <Button variant="primary" onClick={() => setShowPurgeModal(true)}>
           <span className="inline-flex items-center gap-2">

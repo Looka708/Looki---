@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
-import { FiStar, FiLogOut, FiMenu } from 'react-icons/fi';
+import { FiStar } from 'react-icons/fi';
 
 interface Guild {
   id: string;
@@ -14,7 +14,7 @@ interface Guild {
 
 interface TopnavProps {
   guildName?: string;
-  guildIcon?: string;
+  guildIcon?: string | null;
   guildId?: string;
 }
 

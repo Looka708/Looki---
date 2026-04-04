@@ -18,18 +18,24 @@ module.exports = {
   execute: async (interaction, client) => {
     const level = interaction.options.getInteger('level');
 
-    if (!interaction.member?.voice.channel) {
+    if (!interaction.member?.voice?.channel) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('❌ Join a Voice Channel')
         .setDescription('You must be in a voice channel to control volume! 🎵');
-
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-      return;
+      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
-    // Convert 0-200 to decimal 0.1-2.0
+    // Convert 0-200 to decimal 0-2.0
     const volumeDecimal = level / 100;
     const newVolume = setVolume(interaction.guildId, volumeDecimal);
+    const queue = getQueue(interaction.guildId);
+
+    if (queue.audioPlayer && queue.audioPlayer.state.status === 'playing') {
+      const resource = queue.audioPlayer.state.resource;
+      if (resource && resource.volume) {
+         resource.volume.setVolume(newVolume);
+      }
+    }
 
     const volumePercentage = Math.round(newVolume * 100);
     const volumeBar = '█'.repeat(Math.round(volumePercentage / 10)) + '░'.repeat(10 - Math.round(volumePercentage / 10));
@@ -39,7 +45,7 @@ module.exports = {
       .setDescription(`Volume set to \`${volumePercentage}%\`\n\n${volumeBar}`)
       .addFields(
         { name: '📊 Level', value: `${volumePercentage}% (${newVolume.toFixed(1)}x)`, inline: true },
-        { name: '🎵 Current Song', value: getQueue(interaction.guildId).currentSong?.title || 'None', inline: true }
+        { name: '🎵 Current Song', value: queue.currentSong?.title || 'None', inline: true }
       );
 
     await interaction.reply({ embeds: [embed] });

@@ -11,7 +11,7 @@ async function checkBotInGuild(guildId: string): Promise<boolean> {
   }
 
   try {
-    const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${BOT_ID}`, {
+    const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}?with_counts=true`, {
       headers: {
         Authorization: `Bot ${BOT_TOKEN}`,
       },
@@ -26,19 +26,21 @@ async function checkBotInGuild(guildId: string): Promise<boolean> {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { guildId: string } }
+  { params }: { params: Promise<{ guildId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-
+    const { guildId } = await params;
+    
     if (!session || !session.accessToken) {
+      console.warn(`Unauthorized access attempt to guild API for ${guildId}`);
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized', message: 'You must be logged in to access this' },
         { status: 401 }
       );
     }
 
-    const guildId = params.guildId;
+    console.log(`API check: fetching guild ${guildId} info for user session`);
 
     // Fetch user's guilds to verify access
     const response = await fetch('https://discord.com/api/v10/users/@me/guilds', {

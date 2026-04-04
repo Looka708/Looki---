@@ -1,341 +1,104 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { Breadcrumb } from '@/components/layout/Topnav';
+import { GlassCard, CardBody, Badge, Button } from '@/components/ui';
 import { motion } from 'framer-motion';
-import {
-  CuteHeader,
-  CuteSection,
-  CuteStat,
-  CuteDivider,
-  CuteButton,
-  CuteInfoBox,
-  CuteSettingsItem,
-  CuteEmptyState,
-} from '@/components/CuteComponents';
-import { ClipboardIcon } from '@/components/icons';
-import { FiUsers, FiActivity, FiAlertCircle, FiTag, FiGrid, FiLink2, FiZap, FiShield, FiGitBranch, FiSettings, FiTrendingUp, FiMusic, FiBox, FiMail, FiRobot, FiGift, FiTarget } from 'react-icons/fi';
+import { FiSettings, FiGrid, FiLayout, FiMaximize, FiStar } from 'react-icons/fi';
 import { useParams } from 'next/navigation';
 
-interface ServerStats {
-  members: number;
-  activeUsers: number;
-  warnings: number;
-  roles: number;
-  channels: number;
-  invites: number;
-}
-
-interface RecentAction {
-  id: string;
-  type: 'ban' | 'kick' | 'warn' | 'levelup' | 'join' | 'leave';
-  user: string;
-  target?: string;
-  timestamp: Date;
-  icon: string;
-}
-
-export default function ServerManagementPage() {
-  const { guildId } = useParams();
-  const [stats, setStats] = useState<ServerStats>({
-    members: 0,
-    activeUsers: 0,
-    warnings: 0,
-    roles: 0,
-    channels: 0,
-    invites: 0,
-  });
-  const [recentActions, setRecentActions] = useState<RecentAction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [health, setHealth] = useState<{ online: boolean; uptimeSeconds: number } | null>(null);
-  const [loadingHealth, setLoadingHealth] = useState(false);
-
-  useEffect(() => {
-    fetchServerData();
-    // fetch health data for UI
-    if (guildId) {
-      setLoadingHealth(true);
-      fetch(`/api/discord/${guildId}/health`)
-        .then((r) => r.json())
-        .then((d) => {
-          setHealth({ online: d?.online ?? true, uptimeSeconds: d?.uptimeSeconds ?? 0 });
-        })
-        .catch(() => {})
-        .finally(() => setLoadingHealth(false));
-    }
-  }, [guildId]);
-
-  const fetchServerData = async () => {
-    try {
-      setLoading(true);
-      setError('');
-
-      const [statsRes, actionsRes] = await Promise.all([
-        fetch(`/api/analytics?guildId=${guildId}&type=overview`),
-        fetch(`/api/moderation/actions?guildId=${guildId}&limit=4`),
-      ]);
-
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setStats(data.stats || stats);
-      }
-
-      if (actionsRes.ok) {
-        const data = await actionsRes.json();
-        setRecentActions(
-          (data.actions || []).map((action: any) => ({
-            ...action,
-            icon: action.type === 'join' ? 'join' : action.type === 'leave' ? 'leave' : action.type === 'levelup' ? 'levelup' : 'warn',
-          }))
-        );
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch server data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getActionColor = (type: RecentAction['type']) => {
-    const colors = {
-      ban: 'text-danger',
-      kick: 'text-warning',
-      warn: 'text-accent-peach',
-      levelup: 'text-success',
-      join: 'text-accent-pink',
-      leave: 'text-text-secondary',
-    };
-    return colors[type];
-  };
-
-  const formatTime = (date: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return date.toLocaleDateString();
-  };
+export default function ManagePage() {
+  const params = useParams();
+  const guildId = params?.guildId as string;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="space-y-6"
-    >
-      <CuteHeader
-        title="Server Management"
-        subtitle="Overview and control center for your Discord server"
-        icon={null}
-      />
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <CuteStat icon={<FiUsers />} label="Members" value={stats.members} change={3} />
-        <CuteStat icon={<FiActivity />} label="Active Users" value={stats.activeUsers} change={-2} />
-        <CuteStat icon={<FiTag />} label="Total Roles" value={stats.roles} change={1} />
-        <CuteStat icon={<FiGrid />} label="Channels" value={stats.channels} />
-        <CuteStat icon={<FiAlertCircle />} label="Warnings" value={stats.warnings} change={5} />
-        <CuteStat icon={<FiLink2 />} label="Invites" value={stats.invites} />
+    <div className="p-6 sm:p-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex justify-between items-center bg-white/30 p-4 rounded-3xl backdrop-blur-md border border-white/60 mb-8">
+        <Breadcrumb items={[{ label: 'Server Management', href: `/dashboard/${guildId}/manage` }]} />
+        <Badge type="info" className="px-4 py-1.5 rounded-full font-bold shadow-sm">🌸 Global Manager</Badge>
       </div>
 
-      <CuteDivider />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <GlassCard className="rounded-3xl border-white/60 bg-white/50 backdrop-blur-xl shadow-xl overflow-hidden hover:border-pink/30 transition-all duration-500">
+            <div className="p-8 border-b border-border-subtle/50 bg-white/40 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 bg-pink/10 rounded-2xl flex items-center justify-center text-pink text-2xl">
+                    <FiLayout />
+                 </div>
+                 <div>
+                    <h2 className="text-2xl font-display font-bold text-text-primary tracking-tight">Core Modules</h2>
+                    <p className="text-text-secondary text-sm">Control which features are active on your server.</p>
+                 </div>
+              </div>
+              <Button variant="primary" className="shadow-glow-pink">Save Layout</Button>
+            </div>
+            <CardBody className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { name: 'Moderation Toolkit', desc: 'Auto-logs, warnings, and protection.', active: true, icon: '🛡️' },
+                { name: 'Leveling System', desc: 'XP, ranks, and custom leaderboards.', active: true, icon: '📈' },
+                { name: 'Welcome Message', desc: 'Customizable greetings for new members.', active: false, icon: '👋' },
+                { name: 'Utility Commands', desc: 'Reminders, polls, and info commands.', active: true, icon: '⚙️' },
+              ].map(module => (
+                <div key={module.name} className="p-5 rounded-2xl bg-white/40 border border-white/60 hover:bg-white/60 transition-all group cursor-pointer active:scale-95">
+                   <div className="flex items-center justify-between mb-2">
+                      <span className="text-2xl">{module.icon}</span>
+                      <div className={`w-10 h-5 rounded-full relative transition-colors ${module.active ? 'bg-mint' : 'bg-border-subtle'}`}>
+                         <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${module.active ? 'right-1' : 'left-1'}`} />
+                      </div>
+                   </div>
+                   <h3 className="font-bold text-text-primary mb-1">{module.name}</h3>
+                   <p className="text-xs text-text-secondary leading-relaxed">{module.desc}</p>
+                </div>
+              ))}
+            </CardBody>
+          </GlassCard>
 
-      {/* Quick Actions */}
-      <CuteSection icon={<FiZap />} title="Quick Actions">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <CuteButton variant="primary" className="w-full" icon={<FiUsers />}>
-              Manage Members
-            </CuteButton>
-          </motion.div>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <CuteButton variant="secondary" className="w-full" icon={<FiTag />}>
-              Roles
-            </CuteButton>
-          </motion.div>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <CuteButton variant="secondary" className="w-full" icon={<FiShield />}>
-              Moderation
-            </CuteButton>
-          </motion.div>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <CuteButton variant="secondary" className="w-full" icon={<FiSettings />}>
-              Settings
-            </CuteButton>
-          </motion.div>
+          <GlassCard className="rounded-3xl border-white/60 bg-white/50 backdrop-blur-xl shadow-xl overflow-hidden p-8">
+             <div className="flex items-center gap-4 mb-6">
+                 <div className="w-12 h-12 bg-lavender/10 rounded-2xl flex items-center justify-center text-lavender text-2xl">
+                    <FiMaximize />
+                 </div>
+                 <div>
+                    <h2 className="text-2xl font-display font-bold text-text-primary tracking-tight">Advanced Discovery</h2>
+                    <p className="text-text-secondary text-sm">Manage how your server appears in global lists.</p>
+                 </div>
+              </div>
+              <div className="h-48 rounded-2xl bg-gradient-to-br from-pink/5 via-lavender/5 to-peach/5 border-2 border-dashed border-border-subtle flex flex-col items-center justify-center text-center p-8">
+                 <FiGrid className="text-4xl text-text-tertiary mb-3 opacity-50" />
+                 <p className="text-text-secondary font-medium italic">Advanced management tools coming soon to Looki Pro 🌸</p>
+              </div>
+          </GlassCard>
         </div>
-      </CuteSection>
 
-      <CuteDivider />
+        <div className="space-y-8">
+          <GlassCard className="rounded-3xl border-white/60 bg-white/50 backdrop-blur-xl shadow-xl p-8 flex flex-col items-center text-center">
+             <div className="w-20 h-20 bg-peach/10 rounded-full flex items-center justify-center text-peach text-4xl mb-6 shadow-glow-peach">
+                <FiStar />
+             </div>
+             <h3 className="text-xl font-bold text-text-primary mb-2">Support Looki</h3>
+             <p className="text-text-secondary text-sm mb-6">Love using Looki for your server? Consider supporting the development to unlock exclusive 🌸 features.</p>
+             <Button variant="primary" className="w-full shadow-glow-pink">Explore Premium</Button>
+          </GlassCard>
 
-      {/* Recent Activity */}
-      <CuteSection icon={<FiTrendingUp />} title="Recent Activity">
-        {recentActions.length === 0 ? (
-          <CuteEmptyState icon={<FiMail />} title="No Recent Activity" message="Your server has been quiet!" />
-        ) : (
-          <div className="space-y-3">
-            {recentActions.map((action, idx) => {
-              const getActionIcon = () => {
-                switch(action.type) {
-                  case 'join': return <FiActivity />;
-                  case 'leave': return <FiGrid />;
-                  case 'levelup': return <FiTrendingUp />;
-                  case 'warn': return <FiAlertCircle />;
-                  case 'kick': return <FiUsers />;
-                  case 'ban': return <FiShield />;
-                  default: return <FiAlertCircle />;
-                }
-              };
-              
-              return (
-                <motion.div
-                  key={action.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="flex items-center justify-between p-4 rounded-xl bg-surface-card/50 border border-accent-pink/10 hover:border-accent-pink/30 transition-colors"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <span className="text-2xl text-accent-pink">{getActionIcon()}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-text-primary truncate">
-                        {action.user} {action.type === 'join' && 'joined the server'}
-                        {action.type === 'leave' && 'left the server'}
-                        {action.type === 'warn' && `received ${action.target}`}
-                        {action.type === 'levelup' && `reached ${action.target}`}
-                        {action.type === 'ban' && `was banned`}
-                        {action.type === 'kick' && `was kicked`}
-                      </p>
-                      <p className="text-xs text-text-secondary mt-1">{formatTime(action.timestamp)}</p>
-                    </div>
+          <GlassCard className="rounded-3xl border-white/60 bg-white/50 backdrop-blur-xl shadow-xl p-8">
+             <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
+                <FiSettings className="text-pink animate-spin-slow" /> Stats at a Glance
+             </h3>
+             <div className="space-y-4">
+                {[
+                  { label: 'Uptime', value: '100%', color: 'text-mint' },
+                  { label: 'Region', value: 'Global Decor', color: 'text-lavender' },
+                  { label: 'Bot Latency', value: '24ms', color: 'text-peach' },
+                ].map(stat => (
+                  <div key={stat.label} className="flex justify-between items-center py-3 border-b border-white/30 last:border-0">
+                    <span className="text-sm font-medium text-text-secondary">{stat.label}</span>
+                    <span className={`text-sm font-bold ${stat.color}`}>{stat.value}</span>
                   </div>
-                  <span className={`text-sm font-medium ${getActionColor(action.type)}`}>
-                    {action.type.toUpperCase()}
-                  </span>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
-      </CuteSection>
-
-      <CuteDivider />
-
-      {/* Server Features */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CuteSection icon={<FiBox />} title="Enabled Features">
-          <div className="space-y-2">
-            <CuteSettingsItem
-              icon={<FiRobot />}
-              title="Auto-Moderation"
-              description="Spam and word filtering active"
-              action={<span className="text-success text-sm font-semibold">✓ Active</span>}
-            />
-            <CuteSettingsItem
-              icon={<FiTrendingUp />}
-              title="Leveling System"
-              description="Members earning XP"
-              action={<span className="text-success text-sm font-semibold">✓ Active</span>}
-            />
-            <CuteSettingsItem
-              icon={<FiMusic />}
-              title="Music Player"
-              description="Queue and playback enabled"
-              action={<span className="text-success text-sm font-semibold">✓ Active</span>}
-            />
-            <CuteSettingsItem
-              icon={<FiGift />}
-              title="Giveaways"
-              description="Create and manage giveaways"
-              action={<span className="text-success text-sm font-semibold">✓ Active</span>}
-            />
-          </div>
-        </CuteSection>
-
-        <CuteSection icon={<ClipboardIcon />} title="System Status">
-          <div className="space-y-4">
-        <CuteInfoBox
-          type={health?.online ? 'success' : 'danger'}
-          title="Bot Status"
-          message={health?.online ? 'Looki is online and operating normally ✨' : 'Bot offline'}
-        />
-        <CuteInfoBox
-          type={health?.online ? 'success' : 'danger'}
-          title="Uptime"
-          message={health
-            ? new Date(health.uptimeSeconds * 1000).toISOString().substr(11, 8) // format HH:MM:SS approx from seconds
-            : '0:00:00'}
-        />
-        <CuteInfoBox
-          type="info"
-          title="Last Update"
-          message="3 hours ago - V2.1.5 stable"
-        />
-          </div>
-        </CuteSection>
+                ))}
+             </div>
+          </GlassCard>
+        </div>
       </div>
-
-      <CuteDivider />
-
-      {/* Server Config Summary */}
-      <CuteSection icon={<FiTarget />} title="Configuration Summary">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-card/50 border border-accent-pink/10">
-              <span className="text-text-primary font-medium">Command Prefix</span>
-              <span className="font-mono text-accent-pink font-semibold">!</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-card/50 border border-accent-pink/10">
-              <span className="text-text-primary font-medium">Default Language</span>
-              <span className="font-mono text-accent-pink font-semibold">🇬🇧 English</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-card/50 border border-accent-pink/10">
-              <span className="text-text-primary font-medium">Warning Threshold</span>
-              <span className="font-mono text-accent-pink font-semibold">3</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-card/50 border border-accent-pink/10">
-              <span className="text-text-primary font-medium">Mod Log Channel</span>
-              <span className="font-mono text-accent-pink font-semibold">#mod-logs</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-card/50 border border-accent-pink/10">
-              <span className="text-text-primary font-medium">Welcome Channel</span>
-              <span className="font-mono text-accent-pink font-semibold">#welcome</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-card/50 border border-accent-pink/10">
-              <span className="text-text-primary font-medium">XP per Message</span>
-              <span className="font-mono text-accent-pink font-semibold">5 XP</span>
-            </div>
-          </div>
-        </div>
-      </CuteSection>
-
-      <CuteDivider />
-
-      {/* Support Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-6 rounded-2xl bg-gradient-to-r from-accent-pink/10 to-accent-lavender/10 border border-accent-pink/20 text-center"
-      >
-        <h3 className="text-lg font-bold text-accent-pink mb-2">Need Help?</h3>
-        <p className="text-text-secondary mb-4">Check out our documentation or join the support server</p>
-        <div className="flex gap-3 justify-center">
-          <CuteButton variant="primary" icon="📚">
-            Documentation
-          </CuteButton>
-          <CuteButton variant="secondary" icon="💬">
-            Support Server
-          </CuteButton>
-        </div>
-      </motion.div>
-    </motion.div>
+    </div>
   );
 }

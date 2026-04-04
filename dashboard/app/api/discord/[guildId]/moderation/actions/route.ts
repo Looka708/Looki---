@@ -15,8 +15,8 @@ async function fetchDiscord(url: string) {
   return res.json();
 }
 
-export async function GET({ params }: { params: { guildId: string } }) {
-  const { guildId } = params;
+export async function GET(_request: Request, { params }: { params: Promise<{ guildId: string }> }) {
+  const { guildId } = await params;
   try {
     // Fetch audit logs for moderation actions
     const data: any = await fetchDiscord(`https://discord.com/api/v10/guilds/${guildId}/audit-logs?limit=50`);

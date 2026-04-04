@@ -1,98 +1,122 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
-const {
-  joinVoiceChannel,
-  createAudioPlayer,
-  createAudioResource,
-  AudioPlayerStatus,
-  VoiceConnectionStatus,
-} = require('@discordjs/voice');
-const { getQueue, addSongToQueue, setConnection, getNextSong, setCurrentSong } = require('../../utils/musicManager');
-
-// Note: In production, use @discordjs/voice with an audio backend like ffmpeg
-// For now, this is a framework that sends alerts about what songs are queued
+const { joinVoiceChannel, VoiceConnectionStatus } = require('@discordjs/voice');
+const { getQueue, addSongToQueue, setConnection } = require('../../utils/musicManager');
+const { playNext } = require('../../utils/audioPlayer');
+const play = require('play-dl');
 
 module.exports = {
   name: 'play',
   data: new SlashCommandBuilder()
     .setName('play')
-    .setDescription('Play a song from YouTube or Spotify')
+    .setDescription('Play a song from YouTube or Spotify 🎵')
     .addStringOption(option =>
       option.setName('query')
-        .setDescription('Song name or YouTube/Spotify URL')
+        .setDescription('Song name, YouTube URL, or Spotify URL')
         .setRequired(true)
     ),
   execute: async (interaction, client) => {
-    const voiceChannel = interaction.member?.voice.channel;
+    const voiceChannel = interaction.member?.voice?.channel;
 
     if (!voiceChannel) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('❌ Join a Voice Channel')
         .setDescription('You must be in a voice channel to use music commands! 🎵');
-
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-      return;
+      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
-    const query = interaction.options.getString('query');
-    const queue = getQueue(interaction.guildId);
-
     try {
-      // Defer the response since search might take time
       await interaction.deferReply();
+      const query = interaction.options.getString('query');
+      let song = null;
 
-      // Create song object
-      const song = {
-        title: query.includes('youtube.com') || query.includes('youtu.be') 
-          ? 'YouTube Song' 
-          : query.includes('spotify.com')
-          ? 'Spotify Song'
-          : query,
-        url: query.includes('http') ? query : `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
-        requester: interaction.user.tag,
-        requesterId: interaction.user.id,
-        thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg', // Placeholder
-      };
+      // Smart Parsing with play-dl
+      if (query.includes('youtube.com') || query.includes('youtu.be')) {
+         const videoInfo = await play.video_info(query).catch(() => null);
+         if (!videoInfo) throw new Error('Could not find that YouTube video.');
+         song = {
+           title: videoInfo.video_details.title,
+           url: videoInfo.video_details.url,
+           thumbnail: videoInfo.video_details.thumbnails[0]?.url,
+           durationRaw: videoInfo.video_details.durationRaw,
+           requester: interaction.user.tag,
+           requesterId: interaction.user.id
+         };
+      } else if (query.includes('spotify.com/track/')) {
+        if (play.is_expired()) await play.refreshToken();
+        const sp_data = await play.spotify(query);
+        song = {
+            title: `${sp_data.name} - ${sp_data.artists[0]?.name || ''}`,
+            url: query, // will be resolved in audioPlayer
+            thumbnail: sp_data.thumbnail?.url,
+            durationRaw: 'Spotify',
+            requester: interaction.user.tag,
+            requesterId: interaction.user.id
+        };
+      } else if (query.includes('spotify.com/playlist') || query.includes('spotify.com/album') || query.includes('youtube.com/playlist')) {
+         const errorEmbed = createEmbed('error', client)
+             .setTitle('❌ Playlists Unsupported')
+             .setDescription('Playlist support is coming soon! For now, please play individual tracks.');
+         return interaction.editReply({ embeds: [errorEmbed] });
+      } else {
+         const searchResults = await play.search(query, { limit: 1 });
+         if (!searchResults || !searchResults.length) throw new Error('No songs found for that search.');
+         song = {
+           title: searchResults[0].title,
+           url: searchResults[0].url,
+           thumbnail: searchResults[0].thumbnails?.[0]?.url,
+           durationRaw: searchResults[0].durationRaw,
+           requester: interaction.user.tag,
+           requesterId: interaction.user.id
+         };
+      }
 
-      // Add song to queue
+      if (!song) throw new Error('Could not process that song.');
+
+      const queue = getQueue(interaction.guildId);
       addSongToQueue(interaction.guildId, song);
 
-      // Connect to voice channel if not already connected
+      // Connect to VC
       if (!queue.connection) {
         const connection = joinVoiceChannel({
           channelId: voiceChannel.id,
           guildId: interaction.guildId,
           adapterCreator: interaction.guild.voiceAdapterCreator,
+          selfDeaf: true
         });
 
         setConnection(interaction.guildId, connection);
-        queue.connection = connection;
 
-        connection.on(VoiceConnectionStatus.Disconnected, () => {
-          queue.isPlaying = false;
-          queue.currentSong = null;
+        connection.on('_stateChange', (oldState, newState) => {
+           // Handle networking disconnects
         });
       }
 
-      // Create embed
-      const embed = createEmbed('music', client)
-        .setTitle('🎵 Song Added to Queue')
-        .setDescription(song.title)
-        .addFields(
-          { name: '👤 Requester', value: song.requester, inline: true },
-          { name: '📍 Position', value: `#${getQueue(interaction.guildId).songs.length}`, inline: true },
-          { name: '👥 Queue Length', value: `${getQueue(interaction.guildId).songs.length} song(s)`, inline: true }
-        )
-        .setThumbnail(song.thumbnail);
-
-      await interaction.editReply({ embeds: [embed] });
+      if (queue.isPlaying) {
+         // Just added to queue
+         const addEmbed = createEmbed('music', client)
+           .setTitle('🎵 Added to Queue')
+           .setDescription(`**[${song.title}](${song.url})**`)
+           .addFields(
+              { name: '👤 Requester', value: song.requester, inline: true },
+              { name: '📍 Position', value: `#${queue.songs.length}`, inline: true }
+           );
+         if (song.thumbnail) addEmbed.setThumbnail(song.thumbnail);
+         await interaction.editReply({ embeds: [addEmbed] });
+      } else {
+         // Start playing
+         await interaction.editReply({ 
+             embeds: [createEmbed('music', client).setDescription('⏳ Loading track...')] 
+         });
+         playNext(interaction.guildId, client, interaction.channel);
+         // The actual "now playing" message is sent by the playNext function
+      }
     } catch (error) {
-      console.error('Play command error:', error);
-      const errorEmbed = createEmbed('error', client)
+       console.error('Play command error:', error);
+       const errorEmbed = createEmbed('error', client)
         .setTitle('❌ Error Playing Song')
-        .setDescription('Something went wrong. Please try again.');
-
-      await interaction.editReply({ embeds: [errorEmbed] });
+        .setDescription(error.message || 'Something went wrong. Please try again.');
+       try { await interaction.editReply({ embeds: [errorEmbed] }); } catch (e) {}
     }
   },
 };
