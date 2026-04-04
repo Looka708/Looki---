@@ -3,12 +3,12 @@ const { REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
-const TOKEN = process.env.DISCORD_TOKEN;
-const CLIENT_ID = process.env.BOT_ID;
+const TOKEN = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
+const CLIENT_ID = process.env.BOT_ID || process.env.DISCORD_CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID; // Optional: for guild-specific commands
 
 if (!TOKEN || !CLIENT_ID) {
-  console.error('❌ Missing DISCORD_TOKEN or BOT_ID in .env file');
+  console.error('❌ Missing DISCORD_TOKEN/DISCORD_BOT_TOKEN or BOT_ID/DISCORD_CLIENT_ID in environment variables');
   process.exit(1);
 }
 

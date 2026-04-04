@@ -9,12 +9,13 @@ let serverClient: SupabaseClient | null = null;
 export function getSupabaseServer(): SupabaseClient {
   if (serverClient) return serverClient;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Support both standard and NEXT_PUBLIC prefixed variables for deployment flexibility
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceKey) {
     throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables'
+      'Missing Supabase configuration: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.'
     );
   }
 

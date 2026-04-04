@@ -6,8 +6,9 @@
 const DISCORD_API_BASE = 'https://discord.com/api/v10';
 
 function getBotToken(): string {
-  const token = process.env.DISCORD_BOT_TOKEN;
-  if (!token) throw new Error('DISCORD_BOT_TOKEN is not configured');
+  // Support both BOT_TOKEN and standard TOKEN naming
+  const token = process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN;
+  if (!token) throw new Error('DISCORD_BOT_TOKEN / DISCORD_TOKEN is not configured');
   return token;
 }
 

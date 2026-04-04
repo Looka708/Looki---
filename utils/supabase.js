@@ -1,19 +1,23 @@
 const { createClient } = require('@supabase/supabase-js');
 
+// Unify environment variables for both local and production (Koyeb)
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 // Validate environment variables
-if (!process.env.SUPABASE_URL) {
-  console.error('❌ SUPABASE_URL is not set in .env file');
+if (!SUPABASE_URL) {
+  console.error('❌ SUPABASE_URL is not set in environment variables');
   process.exit(1);
 }
 
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('❌ SUPABASE_SERVICE_ROLE_KEY is not set in .env file');
+if (!SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ SUPABASE_SERVICE_ROLE_KEY is not set in environment variables');
   process.exit(1);
 }
 
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY
 );
 
 // Simple health check - just verify connection works
