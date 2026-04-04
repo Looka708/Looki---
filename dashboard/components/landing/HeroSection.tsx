@@ -8,7 +8,7 @@ import { ArrowDown, Play } from 'lucide-react';
 
 export default function HeroSection() {
   const headlineRef = useRef<HTMLHeadingElement>(null);
-  
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       gsap.registerPlugin(ScrollTrigger);
@@ -32,7 +32,7 @@ export default function HeroSection() {
 
   return (
     <section className="relative w-full h-[100svh] flex flex-col items-center justify-center overflow-hidden z-10 pt-16">
-      
+
       {/* Background Decor */}
       <div className="absolute top-10 left-10 opacity-30">
         <span className="font-dm-mono text-[11px] tracking-[0.5em] text-sakura-300">L O O K I</span>
@@ -48,17 +48,17 @@ export default function HeroSection() {
       </div>
 
       <div className="relative z-10 max-w-[1100px] w-full px-[60px] flex flex-col items-center text-center">
-        
+
         {/* Status Badge */}
-        <motion.div 
+        <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="mb-8 px-4 py-1.5 rounded-full border border-mint/20 bg-mint/5 flex items-center gap-2"
         >
-          <motion.div 
-            animate={{ scale: [1, 1.5, 1] }} 
-            transition={{ duration: 1.5, repeat: Infinity }} 
+          <motion.div
+            animate={{ scale: [1, 1.5, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
             className="w-2 h-2 rounded-full bg-mint"
           />
           <span className="font-dm-mono text-[11px] tracking-[0.15em] text-mint">
@@ -74,9 +74,9 @@ export default function HeroSection() {
         </h1>
 
         {/* Subhead */}
-        <motion.p 
-          initial={{ y: 20, opacity: 0 }} 
-          animate={{ y: 0, opacity: 1 }} 
+        <motion.p
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.8 }}
           className="font-syne text-[18px] font-light text-landing-text-2 max-w-[520px] leading-[1.7] mt-8 mb-10"
         >
@@ -87,9 +87,9 @@ export default function HeroSection() {
         </motion.p>
 
         {/* CTA Row */}
-        <motion.div 
-          initial={{ y: 20, opacity: 0 }} 
-          animate={{ y: 0, opacity: 1 }} 
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 1 }}
           className="flex flex-col sm:flex-row gap-6 mb-16"
         >
@@ -101,7 +101,7 @@ export default function HeroSection() {
               Add to Discord — Free <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </span>
           </button>
-          
+
           <button className="group flex items-center gap-3 px-9 py-[18px] rounded-full border border-landing-2 text-landing-text-2 font-syne text-[15px] font-medium backdrop-blur-md transition-all hover:border-landing-3 hover:text-landing-text-1 hover:backdrop-blur-xl">
             <div className="w-8 h-8 rounded-full bg-sakura-500/20 flex items-center justify-center group-hover:bg-sakura-500/40 transition-colors group-hover:scale-110">
               <Play size={12} className="text-white fill-white ml-0.5" />
@@ -111,14 +111,14 @@ export default function HeroSection() {
         </motion.div>
 
         {/* Social Proof */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.4 }}
           className="flex flex-col sm:flex-row items-center gap-8"
         >
           <div className="flex -space-x-3">
-            {[1,2,3,4,5].map(i => (
+            {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="w-10 h-10 rounded-full border-2 border-sakura-300 overflow-hidden bg-surface">
                 <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${i}&backgroundColor=ffd6df`} alt="avatar" />
               </div>
@@ -135,7 +135,7 @@ export default function HeroSection() {
       </div>
 
       {/* Scroll indicator */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 2, duration: 1 }}

@@ -123,7 +123,6 @@
 }
 
 html {
-  scroll-behavior: smooth;
   font-family: var(--font-body);
   color: var(--text-primary);
 }
@@ -142,6 +141,7 @@ html {
   filter: blur(40px);
   opacity: 0.6;
   transform: translateZ(0);
+  will-change: transform;
 }
 .blob1 {
   width: 40vmin; height: 40vmin; left: -10vmin; top: 5vmin;

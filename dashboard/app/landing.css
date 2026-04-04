@@ -84,6 +84,7 @@
   filter: blur(80px);
   pointer-events: none;
   z-index: 0;
+  will-change: transform;
 }
 .blob-landing-1 {
   width: 800px; height: 800px;
@@ -120,6 +121,7 @@
 .text-gradient-sakura {
   background: var(--grad-text);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
