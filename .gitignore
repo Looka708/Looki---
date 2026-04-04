@@ -8,3 +8,7 @@ yarn-debug.log*
 yarn-error.log*
 dist/
 build/
+
+# Cookies (Keep these private!)
+cookies.txt
+Cookies.txt
