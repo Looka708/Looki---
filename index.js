@@ -112,10 +112,16 @@ function loadEvents() {
 // Initialize bot
 async function start() {
   try {
+    const token = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
+    if (!token) {
+      console.error('❌ DISCORD_TOKEN / DISCORD_BOT_TOKEN is not set in environment variables');
+      process.exit(1);
+    }
+
     await connectDatabase();
     loadCommands();
     loadEvents();
-    await client.login(process.env.DISCORD_TOKEN);
+    await client.login(token);
   } catch (error) {
     console.error('❌ Bot startup error:', error);
     process.exit(1);
