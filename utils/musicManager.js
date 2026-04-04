@@ -116,6 +116,22 @@ function deleteQueue(guildId) {
   queues.delete(guildId);
 }
 
+// Set playing state
+function setPlaying(guildId, isPlaying) {
+  const queue = getQueue(guildId);
+  queue.isPlaying = isPlaying;
+  return queue;
+}
+
+// Skip song (remove first from queue)
+function skipSong(guildId) {
+  const queue = getQueue(guildId);
+  if (queue.songs.length > 0) {
+    return queue.songs.shift();
+  }
+  return null;
+}
+
 module.exports = {
   getQueue,
   addSongToQueue,
@@ -130,4 +146,6 @@ module.exports = {
   setConnection,
   getConnection,
   deleteQueue,
+  setPlaying,
+  skipSong
 };
