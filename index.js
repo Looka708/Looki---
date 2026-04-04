@@ -1,6 +1,9 @@
 require('dotenv').config();
 const fs = require('fs');
+const path = require('path');
 const { execSync } = require('child_process');
+const http = require('http');
+const axios = require('axios');
 
 // 🌸 Environment Debugging ───────────
 process.env.FFMPEG_PATH = fs.existsSync('/tmp/ffmpeg') ? '/tmp/ffmpeg' : require('ffmpeg-static');
@@ -11,10 +14,6 @@ catch(e) { console.error('⚠️ [System] yt-dlp exec failed. Will fallback to p
 
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { initializeTables } = require('./utils/supabase');
-const http = require('http');
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
 
 // ── Heartbeat Server (Prevents Koyeb from sleeping) ───────────
 const server = http.createServer((req, res) => {
