@@ -8,24 +8,29 @@ const { createEmbed } = require('./embedBuilder');
 
 async function getYouTubeStream(url) {
   try {
-    // 1. Try play-dl (best performance)
+    // 1. Try play-dl (Fastest, best performance)
+    console.log(`[Music] Attempting play-dl for ${url}...`);
     const streamData = await play.stream(url, { discordPlayerCompatibility: true });
     return { stream: streamData.stream, type: streamData.type };
   } catch (error) {
-    if (error.message?.includes('Sign in to confirm you’re not a bot') || error.message?.includes('403')) {
-      console.log(`[Music] play-dl Bot-Guard detected for ${url}. Trying ytdl-core...`);
+    if (error.message?.includes('Sign in to confirm you’re not a bot') || error.message?.includes('403') || error.message?.includes('Unrecoverable')) {
+      console.log(`[Music] play-dl blocked for ${url}. Trying robust fallback (youtubei.js)...`);
       try {
-        // 2. Try ytdl-core with IOS client
-        const stream = ytdl(url, {
-          filter: 'audioonly',
-          playerClients: ['IOS'],
-          highWaterMark: 1 << 25,
-        });
-        return { stream, type: 'opus' };
-      } catch (ytdlError) {
-        console.log(`[Music] ytdl-core Bot-Guard detected for ${url}. Using robust fallback (youtubei.js)...`);
-        // 3. Robust fallback (Innertube)
+        // 2. Robust fallback (Innertube) - Much more stable than ytdl-core right now
         return await getRobustYouTubeStream(url);
+      } catch (robustError) {
+        console.log(`[Music] youtubei.js also failed. Trying ytdl-core (last resort)...`);
+        try {
+          // 3. Final resort: ytdl-core with IOS client
+          const stream = ytdl(url, {
+            filter: 'audioonly',
+            playerClients: ['IOS'],
+            highWaterMark: 1 << 25,
+          });
+          return { stream, type: 'opus' };
+        } catch (finalError) {
+          throw new Error('All streaming methods are currently blocked by YouTube Bot-Guard.');
+        }
       }
     }
     throw error;
