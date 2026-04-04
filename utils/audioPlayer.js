@@ -28,16 +28,6 @@ function getPlayer(guildId) {
 }
 
 async function getYouTubeStream(url) {
-  try {
-    // 1. Try play-dl (Fastest)
-    console.log(`[Music] Attempting play-dl for ${url}...`);
-    const streamData = await play.stream(url, { discordPlayerCompatibility: true });
-    return { stream: streamData.stream, type: streamData.type };
-  } catch (playError) {
-    console.log(`[Music] play-dl blocked. Switching to raw yt-dlp stream...`);
-  }
-
-  // 2. yt-dlp Subprocess (Raw output)
   return new Promise((resolve, reject) => {
     const cookiePath = path.join(__dirname, '../cookies.txt');
     const localDlPath = path.join(__dirname, '../yt-dlp');
@@ -76,25 +66,37 @@ async function getYouTubeStream(url) {
       console.log('🌸 [yt-dlp] Adding cookies.txt for authentication');
     }
 
-    const ytdlp = spawn(cmd, args);
+    // Pipeline: yt-dlp -> ffmpeg -> passthrough
+    const ytdlp = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const ffmpeg = spawn(ffmpegPath, [
+        '-i', 'pipe:0',        // input from stdin
+        '-f', 's16le',         // raw PCM output
+        '-ar', '48000',        // 48kHz (Discord requirement)
+        '-ac', '2',            // stereo
+        '-loglevel', 'error',
+        'pipe:1'               // output to stdout
+    ], { stdio: ['pipe', 'pipe', 'pipe'] });
+
+    ytdlp.stdout.pipe(ffmpeg.stdin);
+
     const passthrough = new PassThrough();
+    ffmpeg.stdout.pipe(passthrough);
 
-    ytdlp.stdout.pipe(passthrough);
-
-    ytdlp.stderr.on('data', (data) => {
-      const msg = data.toString();
-      if (msg.includes('ERROR:')) {
-        console.error('[yt-dlp Error]', msg.trim());
-      }
+    ffmpeg.stderr.on('data', d => console.error('[ffmpeg]', d.toString().trim()));
+    ytdlp.stderr.on('data', d => {
+        const msg = d.toString().trim();
+        if (msg) console.error('[yt-dlp]', msg);
     });
 
-    ytdlp.on('error', (err) => {
-      reject(new Error(`yt-dlp error: ${err.message}`));
-    });
+    ytdlp.on('error', err => reject(new Error(`yt-dlp error: ${err.message}`)));
+    ffmpeg.on('error', err => reject(new Error(`ffmpeg error: ${err.message}`)));
 
-    ytdlp.on('spawn', () => {
-      console.log('🌸 [yt-dlp] Pipeline established');
-      resolve({ stream: passthrough, type: StreamType.Arbitrary });
+    ffmpeg.on('spawn', () => {
+        console.log('🌸 [yt-dlp] ffmpeg pipeline ready');
+        resolve({ 
+            stream: passthrough, 
+            type: StreamType.Raw   // Raw PCM = no guessing, Discord plays it directly
+        });
     });
   });
 }
