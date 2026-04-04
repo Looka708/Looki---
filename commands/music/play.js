@@ -19,19 +19,19 @@ module.exports = {
         .setRequired(true)
     ),
   execute: async (interaction, client) => {
+    // ✅ Defer FIRST, before anything else to prevent 10062 (interaction timeout)
+    try { await interaction.deferReply(); } catch(e) {}
+
     const voiceChannel = interaction.member?.voice?.channel;
 
     if (!voiceChannel) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('❌ Join a Voice Channel')
         .setDescription('You must be in a voice channel to use music commands! 🎵');
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      return interaction.editReply({ embeds: [errorEmbed] });
     }
 
     try {
-      if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply();
-      }
       const query = interaction.options.getString('query');
       let song = null;
 

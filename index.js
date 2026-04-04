@@ -1,5 +1,14 @@
 require('dotenv').config();
-process.env.FFMPEG_PATH = require('fs').existsSync('/tmp/ffmpeg') ? '/tmp/ffmpeg' : require('ffmpeg-static');
+const fs = require('fs');
+const { execSync } = require('child_process');
+
+// 🌸 Environment Debugging ───────────
+process.env.FFMPEG_PATH = fs.existsSync('/tmp/ffmpeg') ? '/tmp/ffmpeg' : require('ffmpeg-static');
+console.log('🌸 [System] ffmpeg Path:', process.env.FFMPEG_PATH);
+console.log('🌸 [System] yt-dlp binary found:', fs.existsSync('/tmp/yt-dlp'));
+try { console.log('🌸 [System] yt-dlp version:', execSync('/tmp/yt-dlp --version').toString().trim()); } 
+catch(e) { console.error('⚠️ [System] yt-dlp exec failed. Will fallback to python3 if possible.'); }
+
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { initializeTables } = require('./utils/supabase');
 const http = require('http');
