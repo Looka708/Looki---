@@ -4,22 +4,30 @@ const path = require('path');
 
 let yt;
 
-function parseCookies(filePath) {
-    if (process.env.YOUTUBE_COOKIE) {
-        return process.env.YOUTUBE_COOKIE.trim();
+function parseCookies(input) {
+    let content = '';
+    
+    if (typeof input === 'string' && (input.includes('/') || input.includes('\\'))) {
+        const possiblePaths = [input, input.replace('cookies.txt', 'Cookies.txt')];
+        for (const p of possiblePaths) {
+            if (fs.existsSync(p)) {
+                content = fs.readFileSync(p, 'utf8');
+                break;
+            }
+        }
+    } else if (process.env.YOUTUBE_COOKIE) {
+        content = process.env.YOUTUBE_COOKIE.trim();
+    } else if (typeof input === 'string') {
+        content = input;
     }
 
-    const possiblePaths = [filePath, filePath.replace('cookies.txt', 'Cookies.txt')];
-    let content = null;
-    for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-            content = fs.readFileSync(p, 'utf8');
-            break;
-        }
-    }
     if (!content) return null;
     
-    // Parse Netscape format into modern JSON format
+    try {
+        const parsed = JSON.parse(content);
+        if (Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+
     const cookies = content.split('\n')
         .map(line => line.trim())
         .filter(line => line && !line.startsWith('#'))
@@ -27,15 +35,14 @@ function parseCookies(filePath) {
             const parts = line.split('\t');
             if (parts.length >= 7) {
                 const domain = parts[0].trim();
-                // Filter for YouTube/Google
                 if (domain.includes('youtube.com') || domain.includes('google.com')) {
                     return {
                         name: parts[5].trim(),
                         value: parts[6].trim(),
-                        domain: parts[0].trim(),
+                        domain: parts[0].trim().replace(/^\./, ''),
                         path: parts[2].trim(),
                         secure: parts[3].trim() === 'TRUE',
-                        expiry: parseInt(parts[4].trim())
+                        expires: parseInt(parts[4].trim())
                     };
                 }
             }
@@ -49,7 +56,6 @@ function parseCookies(filePath) {
     return cookies;
 }
 
-// Helper to convert structured cookies back to string if needed
 function cookiesToString(cookies) {
     if (!Array.isArray(cookies)) return cookies;
     return cookies.map(c => `${c.name}=${c.value}`).join('; ');
@@ -59,8 +65,6 @@ async function getYouTubeClient(forceNew = false) {
     if (!yt || forceNew) {
         const cookiePath = path.join(__dirname, '../cookies.txt');
         const cookies = parseCookies(cookiePath);
-        
-        // Innertube prefers string or array of strings, so we convert back for this specifically
         const cookieString = cookiesToString(cookies);
 
         yt = await Innertube.create({
@@ -87,7 +91,10 @@ async function getRobustYouTubeStream(url) {
     try {
         const info = await client.getInfo(videoId);
         
-        // Use download method as it handles signatures better with cookies
+        // Debugging for silence or failure
+        console.log('[YTJS] streaming_data exists:', !!info.streaming_data);
+        if (!info.streaming_data) throw new Error('No streaming_data returned');
+
         const stream = await client.download(videoId, {
             type: 'audio',
             quality: 'best',
@@ -98,7 +105,7 @@ async function getRobustYouTubeStream(url) {
         const nodeStream = Readable.fromWeb(stream);
         return { stream: nodeStream, type: 'arbitrary' };
     } catch (e) {
-        console.error(`❌ [YouTube] Robust stream error: ${e.message}`);
+        console.error(`❌ [YTJS] Full error: ${e.message}`);
         throw e;
     }
 }
@@ -118,13 +125,8 @@ async function getRobustYouTubeInfo(url) {
     const client = await getYouTubeClient();
     const videoId = extractVideoId(url);
     const video = await client.getInfo(videoId);
-
     const duration = video.basic_info.duration || 0;
-    const formatted = new Date(duration * 1000)
-        .toISOString()
-        .substr(11, 8)
-        .replace(/^00:/, '');
-
+    const formatted = new Date(duration * 1000).toISOString().substr(11, 8).replace(/^00:/, '');
     return {
         title: video.basic_info.title,
         url: `https://www.youtube.com/watch?v=${video.basic_info.id}`,
