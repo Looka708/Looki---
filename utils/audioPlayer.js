@@ -28,76 +28,92 @@ function getPlayer(guildId) {
 }
 
 async function getYouTubeStream(url) {
+  const { spawn } = require('child_process');
+  const { PassThrough } = require('stream');
+  const { StreamType } = require('@discordjs/voice');
+
+  const YTDLP_PATH = fs.existsSync('/tmp/yt-dlp') ? '/tmp/yt-dlp' : (fs.existsSync(path.join(__dirname, '../yt-dlp')) ? path.join(__dirname, '../yt-dlp') : 'yt-dlp');
+  const cookiePath = path.join(__dirname, '../cookies.txt');
+
+  const ytArgs = [
+      '-f', 'bestaudio',
+      '--no-playlist',
+      '--no-warnings',
+      '--quiet',
+      '-o', '-',
+  ];
+
+  if (fs.existsSync(cookiePath)) {
+      ytArgs.push('--cookies', cookiePath);
+      console.log('🌸 [yt-dlp] Using cookies.txt');
+  }
+
+  ytArgs.push(url);
+
+  const ffArgs = [
+      '-hide_banner',
+      '-loglevel', 'error',
+      '-i', 'pipe:0',
+      '-f', 's16le',    // raw PCM
+      '-ar', '48000',   // Discord sample rate
+      '-ac', '2',       // stereo
+      'pipe:1',
+  ];
+
   return new Promise((resolve, reject) => {
-    const cookiePath = path.join(__dirname, '../cookies.txt');
-    const localDlPath = path.join(__dirname, '../yt-dlp');
-    
-    let cmd, args;
-    
-    if (fs.existsSync(localDlPath)) {
-      cmd = localDlPath;
-      args = [
-        '--no-playlist',
-        '--no-warnings',
-        '--ignore-errors',
-        '--no-part',         
-        '-f', 'bestaudio/best', 
-        '-o', '-',           
-        url
-      ];
-      console.log('🌸 [yt-dlp] Using standalone binary');
-    } else {
-      cmd = process.platform === 'win32' ? 'python' : 'python3';
-      args = [
-        '-m', 'yt_dlp',
-        '--no-playlist',
-        '--no-warnings',
-        '--ignore-errors',
-        '--no-part',
-        '-f', 'bestaudio/best',
-        '-o', '-',
-        url
-      ];
-      console.log(`🌸 [yt-dlp] Falling back to ${cmd} -m yt_dlp`);
-    }
+      // Determine if we should use python fallback
+      let finalYtdlpCmd = YTDLP_PATH;
+      let finalYtdlpArgs = ytArgs;
+      
+      if (YTDLP_PATH === 'yt-dlp') {
+          // Check if system yt-dlp exists, otherwise use python
+          try {
+              require('child_process').execSync('yt-dlp --version');
+          } catch(e) {
+              finalYtdlpCmd = process.platform === 'win32' ? 'python' : 'python3';
+              finalYtdlpArgs = ['-m', 'yt_dlp', ...ytArgs];
+              console.log(`🌸 [yt-dlp] Falling back to ${finalYtdlpCmd} -m yt_dlp`);
+          }
+      }
 
-    if (fs.existsSync(cookiePath)) {
-      args.push('--cookies', cookiePath);
-      console.log('🌸 [yt-dlp] Adding cookies.txt for authentication');
-    }
+      const ytdlp = spawn(finalYtdlpCmd, finalYtdlpArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+      const ffmpeg = spawn(ffmpegPath || 'ffmpeg', ffArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
 
-    // Pipeline: yt-dlp -> ffmpeg -> passthrough
-    const ytdlp = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-    const ffmpeg = spawn(ffmpegPath, [
-        '-i', 'pipe:0',        // input from stdin
-        '-f', 's16le',         // raw PCM output
-        '-ar', '48000',        // 48kHz (Discord requirement)
-        '-ac', '2',            // stereo
-        '-loglevel', 'error',
-        'pipe:1'               // output to stdout
-    ], { stdio: ['pipe', 'pipe', 'pipe'] });
+      ytdlp.stdout.pipe(ffmpeg.stdin);
 
-    ytdlp.stdout.pipe(ffmpeg.stdin);
+      ytdlp.stderr.on('data', d => {
+          const msg = d.toString().trim();
+          if (msg && !msg.includes('Extracting')) console.error('[yt-dlp stderr]', msg);
+      });
 
-    const passthrough = new PassThrough();
-    ffmpeg.stdout.pipe(passthrough);
+      ffmpeg.stderr.on('data', d => {
+          const msg = d.toString().trim();
+          if (msg) console.error('[ffmpeg stderr]', msg);
+      });
 
-    ffmpeg.stderr.on('data', d => console.error('[ffmpeg]', d.toString().trim()));
-    ytdlp.stderr.on('data', d => {
-        const msg = d.toString().trim();
-        if (msg) console.error('[yt-dlp]', msg);
-    });
+      ytdlp.on('error', err => reject(new Error(`yt-dlp spawn failed: ${err.message}`)));
+      ffmpeg.on('error', err => reject(new Error(`ffmpeg spawn failed: ${err.message}`)));
 
-    ytdlp.on('error', err => reject(new Error(`yt-dlp error: ${err.message}`)));
-    ffmpeg.on('error', err => reject(new Error(`ffmpeg error: ${err.message}`)));
+      ytdlp.on('close', code => {
+          if (code !== 0 && code !== null) {
+              console.error(`[yt-dlp] exited with code ${code}`);
+          }
+      });
 
-    ffmpeg.on('spawn', () => {
-        console.log('🌸 [yt-dlp] ffmpeg pipeline ready');
-        resolve({ 
-            stream: passthrough, 
-            type: StreamType.Raw   // Raw PCM = no guessing, Discord plays it directly
-        });
-    });
+      const passthrough = new PassThrough();
+      ffmpeg.stdout.pipe(passthrough);
+
+      passthrough.once('data', () => {
+          console.log('🌸 [yt-dlp] PCM stream flowing');
+      });
+
+      ffmpeg.on('spawn', () => {
+          console.log('🌸 [yt-dlp] yt-dlp → ffmpeg pipeline ready');
+          resolve({
+              stream: passthrough,
+              type: StreamType.Raw,  // Raw PCM
+          });
+      });
   });
 }
 
