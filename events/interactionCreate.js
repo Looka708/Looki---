@@ -10,14 +10,20 @@ module.exports = {
       try {
         await command.execute(interaction, client);
       } catch (error) {
-        console.error(error);
+        console.error(`Error executing command ${interaction.commandName}:`, error);
+        
         const embed = new EmbedBuilder()
           .setColor(0xF4C2C2)
           .setTitle('❌ Error')
           .setDescription('hmm that didn\'t work :( try again?')
           .setTimestamp();
 
-        await interaction.reply({ embeds: [embed], ephemeral: true }).catch(() => {});
+        // Check if interaction was already deferred/replied to avoid "Interaction already acknowledged" error
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply({ embeds: [embed] }).catch(() => {});
+        } else {
+          await interaction.reply({ embeds: [embed], ephemeral: true }).catch(() => {});
+        }
       }
     } else if (interaction.isButton()) {
       // Handle button interactions here

@@ -29,7 +29,9 @@ module.exports = {
     }
 
     try {
-      await interaction.deferReply();
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply();
+      }
       const query = interaction.options.getString('query');
       let song = null;
 
