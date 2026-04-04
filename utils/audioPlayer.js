@@ -9,76 +9,74 @@ const { getRobustYouTubeStream, parseCookies } = require('./youtube');
 const { getQueue, setPlaying, skipSong } = require('./musicManager');
 const { createEmbed } = require('./embedBuilder');
 
+// Use ffmpeg-static to ensure ffmpeg is available without manual installation
+const ffmpegPath = require('ffmpeg-static');
+process.env.FFMPEG_PATH = ffmpegPath; 
+
 const players = new Map(); // guildId -> AudioPlayer
 
 function getPlayer(guildId) {
     if (!players.has(guildId)) {
         const player = createAudioPlayer({
-            behaviors: { noSubscriber: NoSubscriberBehavior.Pause }
+            behaviors: { 
+                noSubscriber: NoSubscriberBehavior.Pause 
+            }
         });
         players.set(guildId, player);
     }
     return players.get(guildId);
 }
 
-/**
- * Gets a playable stream using yt-dlp as a robust backup
- */
 async function getYouTubeStream(url) {
-  // 1. Try play-dl (Primary/Fastest)
   try {
+    // 1. Try play-dl (Fastest)
     console.log(`[Music] Attempting play-dl for ${url}...`);
     const streamData = await play.stream(url, { discordPlayerCompatibility: true });
     return { stream: streamData.stream, type: streamData.type };
   } catch (playError) {
-    console.log(`[Music] play-dl blocked. Switching to yt-dlp (Nuclear Option)...`);
+    console.log(`[Music] play-dl blocked. Switching to raw yt-dlp stream...`);
   }
 
-  // 2. yt-dlp Subprocess (Best for bypassing Koyeb IP blocks)
+  // 2. yt-dlp Subprocess (Raw output)
   return new Promise((resolve, reject) => {
     const cookiePath = path.join(__dirname, '../cookies.txt');
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
     
-    // yt-dlp Arguments for high-performance audio streaming
+    // Simpler, faster command for streaming
     const args = [
+      '-m', 'yt_dlp',
       '--no-playlist',
-      '-x', // Extract audio
-      '--audio-format', 'opus', // Best for Discord
-      '-o', '-', // Output to stdout
       '--no-warnings',
       '--ignore-errors',
+      '--no-part',         // Stay in memory, no temporary files
+      '-f', 'bestaudio/best', // Fetch the cleanest bitstream
+      '-o', '-',           // Pipe to stdout
       url
     ];
 
-    // Add cookies if available
     if (fs.existsSync(cookiePath)) {
       args.push('--cookies', cookiePath);
       console.log('🌸 [yt-dlp] Using cookies.txt for auth');
     }
 
-    const ytdlp = spawn('yt-dlp', args);
+    const ytdlp = spawn(pythonCmd, args);
     const passthrough = new PassThrough();
 
-    // Pipe stdout to our stream
     ytdlp.stdout.pipe(passthrough);
 
-    // Logging errors from yt-dlp
     ytdlp.stderr.on('data', (data) => {
       const msg = data.toString();
-      if (!msg.includes('WARNING')) {
-        console.error('[yt-dlp Log]', msg.trim());
+      if (msg.includes('ERROR:')) {
+        console.error('[yt-dlp Error]', msg.trim());
       }
     });
 
     ytdlp.on('error', (err) => {
-      if (err.code === 'ENOENT') {
-        reject(new Error('yt-dlp not found! Make sure "pip install yt-dlp" is in your start script.'));
-      } else {
-        reject(err);
-      }
+      reject(new Error(`yt-dlp error: ${err.message}`));
     });
 
     ytdlp.on('spawn', () => {
-      console.log('🌸 [yt-dlp] Subprocess spawned successfully');
+      console.log('🌸 [yt-dlp] Stream pipeline established');
       resolve({ stream: passthrough, type: StreamType.Arbitrary });
     });
   });
@@ -104,16 +102,23 @@ async function playNext(guildId, client, channel) {
         
         if (resource.volume) {
             resource.volume.setVolume(queue.volume ?? 1);
+            console.log(`🔊 [Player] Volume set to ${queue.volume ?? 1}`);
         }
 
         queue.connection.subscribe(player);
         player.play(resource);
         setPlaying(guildId, true);
 
+        // Debug log for actual playback start
+        player.once(AudioPlayerStatus.Playing, () => {
+            console.log(`🌸 [Player] Now live: ${song.title}`);
+        });
+
         player.removeAllListeners(AudioPlayerStatus.Idle);
         player.removeAllListeners('error');
 
         player.once(AudioPlayerStatus.Idle, () => {
+            console.log(`🌸 [Player] Finished track, moving to next...`);
             skipSong(guildId);
             playNext(guildId, client, channel);
         });
@@ -137,9 +142,9 @@ async function playNext(guildId, client, channel) {
         }
 
     } catch (err) {
-        console.error(`[Player] Failed to load ${song.title}:`, err.message);
+        console.error(`[Player] Playback loop failed:`, err.message);
         if (channel) {
-            channel.send(`❌ Failed to stream **${song.title}**. This might be due to a strict YouTube IP block on Koyeb. Skipping...`).catch(() => {});
+            channel.send(`❌ Streaming failed. Skipping...`).catch(() => {});
         }
         skipSong(guildId);
         playNext(guildId, client, channel);
@@ -155,9 +160,4 @@ function stopPlayer(guildId) {
     }
 }
 
-module.exports = { 
-    getYouTubeStream,
-    playNext,
-    stopPlayer,
-    getPlayer
-};
+module.exports = { getYouTubeStream, playNext, stopPlayer, getPlayer };

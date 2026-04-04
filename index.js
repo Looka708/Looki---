@@ -115,15 +115,18 @@ async function start() {
     const token = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
     // Environment Diagnostics 🌸
     const { execSync } = require('child_process');
+    const ffmpegPath = require('ffmpeg-static');
+    
     try {
-        const ffVer = execSync('ffmpeg -version').toString().split('\n')[0];
+        const ffVer = execSync(`${ffmpegPath} -version`).toString().split('\n')[0];
         console.log(`🌸 [System] ffmpeg Ready: ${ffVer}`);
-    } catch(e) { console.error('❌ [System] ffmpeg missing! Please check Koyeb environment.'); }
+    } catch(e) { console.error('❌ [System] ffmpeg-static failed check!'); }
 
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
     try {
-        const ytVer = execSync('yt-dlp --version').toString().trim();
+        const ytVer = execSync(`${pythonCmd} -m yt_dlp --version`).toString().trim();
         console.log(`🌸 [System] yt-dlp Ready: ${ytVer}`);
-    } catch(e) { console.log('⚠️  [System] yt-dlp starting install process via package.json script...'); }
+    } catch(e) { console.log(`⚠️  [System] yt-dlp starting install via package.json script...`); }
 
     if (!token) {
       console.error('❌ DISCORD_TOKEN / DISCORD_BOT_TOKEN is not set in environment variables');

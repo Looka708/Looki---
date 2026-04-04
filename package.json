@@ -4,7 +4,7 @@
   "description": "A soft, hyper-aesthetic Discord bot",
   "main": "index.js",
   "scripts": {
-    "start": "python3 -m pip install -q yt-dlp && node index.js",
+    "start": "(python3 -m pip install -q yt-dlp || python -m pip install -q yt-dlp) && node index.js",
     "dev": "nodemon index.js",
     "deploy": "node deploy.js"
   },
