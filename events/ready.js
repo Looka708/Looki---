@@ -1,6 +1,6 @@
 const play = require('play-dl');
 const path = require('path');
-const { parseCookies } = require('../utils/youtube');
+const { parseCookies, cookiesToString } = require('../utils/youtube');
 
 module.exports = {
   name: 'clientReady',
@@ -23,11 +23,12 @@ module.exports = {
 
     try {
         const cookiePath = path.join(__dirname, '../cookies.txt');
-        const cookie = parseCookies(cookiePath);
+        const cookies = parseCookies(cookiePath);
+        const cookieString = cookiesToString(cookies);
         
-        if (cookie) {
-            await play.setToken({ youtube: { cookie } });
-            console.log('🌸 [Play-dl] Cookies.txt loaded for YouTube auth');
+        if (cookieString) {
+            await play.setToken({ youtube: { cookie: cookieString } });
+            console.log('🌸 [Play-dl] Cookies loaded for YouTube auth');
         } else {
             await play.setToken({});
         }

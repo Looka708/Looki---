@@ -9,40 +9,34 @@ const path = require('path');
 
 async function getYouTubeStream(url) {
   try {
-    // 1. Try play-dl (Fastest, best performance)
+    // 1. Try play-dl (Fastest)
     console.log(`[Music] Attempting play-dl for ${url}...`);
     const streamData = await play.stream(url, { discordPlayerCompatibility: true });
     return { stream: streamData.stream, type: streamData.type };
   } catch (error) {
-    if (error.message?.includes('Sign in to confirm you’re not a bot') || error.message?.includes('403') || error.message?.includes('Unrecoverable')) {
-      console.log(`[Music] play-dl blocked for ${url}. Trying robust fallback (youtubei.js)...`);
+    console.log(`[Music] play-dl blocked for ${url}. Trying robust fallback (youtubei.js)...`);
+    try {
+      // 2. Robust fallback (Innertube)
+      return await getRobustYouTubeStream(url);
+    } catch (robustError) {
+      console.log(`[Music] youtubei.js also failed. Trying ytdl-core (last resort)...`);
       try {
-        // 2. Robust fallback (Innertube) - Much more stable than ytdl-core right now
-        return await getRobustYouTubeStream(url);
-      } catch (robustError) {
-        console.log(`[Music] youtubei.js also failed. Trying ytdl-core (last resort)...`);
-        try {
-          // 3. Final resort: ytdl-core with IOS client and cookies
-          const cookiePath = path.join(__dirname, '../cookies.txt');
-          const cookie = parseCookies(cookiePath);
-          
-          const stream = ytdl(url, {
-            filter: 'audioonly',
-            playerClients: ['IOS'],
-            highWaterMark: 1 << 25,
-            requestOptions: {
-               headers: {
-                  cookie: cookie || ''
-               }
-            }
-          });
-          return { stream, type: 'opus' };
-        } catch (finalError) {
-          throw new Error('All streaming methods are currently blocked by YouTube Bot-Guard.');
-        }
+        // 3. Final resort: ytdl-core with structured cookies
+        const cookiePath = path.join(__dirname, '../cookies.txt');
+        const cookiesArray = parseCookies(cookiePath);
+        
+        const stream = ytdl(url, {
+          filter: 'audioonly',
+          playerClients: ['IOS'],
+          highWaterMark: 1 << 25,
+          cookies: Array.isArray(cookiesArray) ? cookiesArray : undefined
+        });
+        return { stream, type: 'opus' };
+      } catch (finalError) {
+        console.error('Final resort error:', finalError.message);
+        throw new Error('All streaming methods are blocked by YouTube Bot-Guard. Keep your cookies.txt fresh!');
       }
     }
-    throw error;
   }
 }
 

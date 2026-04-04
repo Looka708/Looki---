@@ -5,12 +5,10 @@ const path = require('path');
 let yt;
 
 function parseCookies(filePath) {
-    // 1. Check for environment variable first (Highest priority)
     if (process.env.YOUTUBE_COOKIE) {
         return process.env.YOUTUBE_COOKIE.trim();
     }
 
-    // 2. Fallback to physical cookies.txt file
     const possiblePaths = [filePath, filePath.replace('cookies.txt', 'Cookies.txt')];
     let content = null;
     for (const p of possiblePaths) {
@@ -21,49 +19,61 @@ function parseCookies(filePath) {
     }
     if (!content) return null;
     
-    // Parse Netscape format with domain filtering (Critical for large files)
-    const cookieString = content.split('\n')
+    // Parse Netscape format into modern JSON format
+    const cookies = content.split('\n')
         .map(line => line.trim())
         .filter(line => line && !line.startsWith('#'))
         .map(line => {
             const parts = line.split('\t');
             if (parts.length >= 7) {
                 const domain = parts[0].trim();
-                // Only include cookies for YouTube or Google
+                // Filter for YouTube/Google
                 if (domain.includes('youtube.com') || domain.includes('google.com')) {
-                    const name = parts[5].trim();
-                    const value = parts[6].trim();
-                    return `${name}=${value}`;
+                    return {
+                        name: parts[5].trim(),
+                        value: parts[6].trim(),
+                        domain: parts[0].trim(),
+                        path: parts[2].trim(),
+                        secure: parts[3].trim() === 'TRUE',
+                        expiry: parseInt(parts[4].trim())
+                    };
                 }
             }
             return null;
         })
-        .filter(Boolean)
-        .join('; ');
+        .filter(Boolean);
 
-    if (cookieString) {
-        console.log('🌸 [YouTube] Successfully parsed and filtered cookies.txt');
+    if (cookies.length > 0) {
+        console.log(`🌸 [YouTube] Successfully parsed ${cookies.length} relevant cookies`);
     }
-    return cookieString || null;
+    return cookies;
+}
+
+// Helper to convert structured cookies back to string if needed
+function cookiesToString(cookies) {
+    if (!Array.isArray(cookies)) return cookies;
+    return cookies.map(c => `${c.name}=${c.value}`).join('; ');
 }
 
 async function getYouTubeClient(forceNew = false) {
     if (!yt || forceNew) {
         const cookiePath = path.join(__dirname, '../cookies.txt');
-        const cookie = parseCookies(cookiePath);
+        const cookies = parseCookies(cookiePath);
         
+        // Innertube prefers string or array of strings, so we convert back for this specifically
+        const cookieString = cookiesToString(cookies);
+
         yt = await Innertube.create({
             cache: new UniversalCache(false),
-            // Optimized settings for cookie-based auth
             client_type: 'WEB',
             generate_session_locally: false,
             retrieve_player: true,
-            cookie: cookie || undefined,
+            cookie: cookieString || undefined,
         });
 
-        console.log(cookie 
+        console.log(cookieString 
             ? '🌸 [YouTube] Client ready with cookies'
-            : '⚠️ [YouTube] Client ready WITHOUT cookies (may fail)'
+            : '⚠️ [YouTube] Client ready WITHOUT cookies'
         );
     }
     return yt;
@@ -71,34 +81,26 @@ async function getYouTubeClient(forceNew = false) {
 
 async function getRobustYouTubeStream(url) {
     const client = await getYouTubeClient();
-
     const videoId = extractVideoId(url);
     if (!videoId) throw new Error('Invalid YouTube URL');
 
-    let info = await client.getInfo(videoId);
+    try {
+        const info = await client.getInfo(videoId);
+        
+        // Use download method as it handles signatures better with cookies
+        const stream = await client.download(videoId, {
+            type: 'audio',
+            quality: 'best',
+            format: 'any',
+        });
 
-    if (!info.streaming_data) {
-        // Force new client if session is stale
-        const freshClient = await getYouTubeClient(true);
-        info = await freshClient.getInfo(videoId);
-        if (!info.streaming_data) {
-            throw new Error('No streaming data - video may be restricted.');
-        }
+        const { Readable } = require('stream');
+        const nodeStream = Readable.fromWeb(stream);
+        return { stream: nodeStream, type: 'arbitrary' };
+    } catch (e) {
+        console.error(`❌ [YouTube] Robust stream error: ${e.message}`);
+        throw e;
     }
-
-    return await streamFromInfo(client, info, videoId);
-}
-
-async function streamFromInfo(client, info, videoId) {
-    const { Readable } = require('stream');
-    const stream = await client.download(videoId, {
-        type: 'audio',
-        quality: 'best',
-        format: 'any',
-    });
-
-    const nodeStream = Readable.fromWeb(stream);
-    return { stream: nodeStream, type: 'arbitrary' };
 }
 
 function extractVideoId(url) {
@@ -149,5 +151,6 @@ module.exports = {
     getRobustYouTubeStream, 
     getRobustYouTubeInfo, 
     getYouTubeSearch, 
-    parseCookies 
+    parseCookies,
+    cookiesToString
 };
