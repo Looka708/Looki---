@@ -1,12 +1,7 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
-const { joinVoiceChannel, VoiceConnectionStatus } = require('@discordjs/voice');
-const { getQueue, addSongToQueue, setConnection } = require('../../utils/musicManager');
+const { getQueue, addSongToQueue } = require('../../utils/musicManager');
 const { playNext } = require('../../utils/audioPlayer');
-const { getRobustYouTubeInfo } = require('../../utils/youtube');
-const play = require('play-dl');
-const ytdl = require('@distube/ytdl-core');
-const yts = require('yt-search');
 
 module.exports = {
   name: 'play',
@@ -19,165 +14,143 @@ module.exports = {
         .setRequired(true)
     ),
   execute: async (interaction, client) => {
-    // ✅ Defer FIRST, before anything else to prevent 10062 (interaction timeout)
     try { 
-      await interaction.deferReply(); 
+        await interaction.deferReply(); 
     } catch(e) {
-      console.error('Failed to defer interaction:', e.message);
+        console.error('Failed to defer:', e.message);
     }
 
     const voiceChannel = interaction.member?.voice?.channel;
-
     if (!voiceChannel) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('❌ Join a Voice Channel')
         .setDescription('You must be in a voice channel to use music commands! 🎵');
-      
-      if (interaction.deferred || interaction.replied) {
-        return interaction.editReply({ embeds: [errorEmbed] });
-      } else {
-        return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-      }
+      return interaction.editReply({ embeds: [errorEmbed] });
     }
 
     try {
       const query = interaction.options.getString('query');
-      let song = null;
-
-      // Smart Parsing with play-dl (primary) and fallbacks
-      if (query.includes('youtube.com') || query.includes('youtu.be')) {
-         try {
-           const videoInfo = await play.video_info(query);
-           song = {
-             title: videoInfo.video_details.title,
-             url: videoInfo.video_details.url,
-             thumbnail: videoInfo.video_details.thumbnails[0]?.url,
-             durationRaw: videoInfo.video_details.durationRaw,
-             requester: interaction.user.tag,
-             requesterId: interaction.user.id
-           };
-         } catch (infoError) {
-           console.log(`[Music] play-dl info failed for ${query}. Trying @distube/ytdl-core...`);
-           try {
-             // Fallback 1: ytdl-core
-             const videoInfo = await ytdl.getBasicInfo(query, { playerClients: ['IOS'] });
-             song = {
-               title: videoInfo.videoDetails.title,
-               url: videoInfo.videoDetails.video_url,
-               thumbnail: videoInfo.videoDetails.thumbnails[0]?.url,
-               durationRaw: new Date(videoInfo.videoDetails.lengthSeconds * 1000).toISOString().substr(11, 8).replace(/^00:/, ''),
-               requester: interaction.user.tag,
-               requesterId: interaction.user.id
-             };
-           } catch (ytdlError) {
-             console.log(`[Music] ytdl-core info failed for ${query}. Trying youtubei.js...`);
-             try {
-                // Fallback 2: youtubei.js
-                const info = await getRobustYouTubeInfo(query);
-                song = {
-                    ...info,
-                    requester: interaction.user.tag,
-                    requesterId: interaction.user.id
-                };
-             } catch (ytError) {
-                throw new Error('All YouTube info extractors are currently blocked or rate-limited. Please try again later.');
-             }
-           }
-         }
-      } else if (query.includes('spotify.com/track/')) {
-        if (play.is_expired()) await play.refreshToken();
-        const sp_data = await play.spotify(query);
-        song = {
-            title: `${sp_data.name} - ${sp_data.artists[0]?.name || ''}`,
-            url: query, // will be resolved in audioPlayer
-            thumbnail: sp_data.thumbnail?.url,
-            durationRaw: 'Spotify',
-            requester: interaction.user.tag,
-            requesterId: interaction.user.id
-        };
-      } else if (query.includes('spotify.com/playlist') || query.includes('spotify.com/album') || query.includes('youtube.com/playlist')) {
-         const errorEmbed = createEmbed('error', client)
-             .setTitle('❌ Playlists Unsupported')
-             .setDescription('Playlist support is coming soon! For now, please play individual tracks.');
-         return interaction.editReply({ embeds: [errorEmbed] });
-      } else {
-         // Search
-         try {
-           const searchResults = await play.search(query, { limit: 1 });
-           if (!searchResults || !searchResults.length) throw new Error('No songs found.');
-           song = {
-             title: searchResults[0].title,
-             url: searchResults[0].url,
-             thumbnail: searchResults[0].thumbnails?.[0]?.url,
-             durationRaw: searchResults[0].durationRaw,
-             requester: interaction.user.tag,
-             requesterId: interaction.user.id
-           };
-         } catch (searchError) {
-           console.log(`[Music] play-dl search failed for "${query}". Trying yt-search...`);
-           const r = await yts(query);
-           const video = r.videos[0];
-           if (!video) throw new Error('No songs found for that search.');
-           song = {
-             title: video.title,
-             url: video.url,
-             thumbnail: video.thumbnail,
-             durationRaw: video.timestamp,
-             requester: interaction.user.tag,
-             requesterId: interaction.user.id
-           };
-         }
-      }
+      const node = client.shoukaku.options.nodeResolver(client.shoukaku.nodes);
       
+      if (!node) throw new Error('No Lavalink nodes are currently available. Please try again in a few seconds.');
+
+      // Search for the track
+      // Lavalink supports ytsearch:, scsearch:, and direct URLs (YouTube/Spotify)
+      let searchType = 'ytsearch';
+      if (query.includes('youtube.com') || query.includes('youtu.be')) searchType = null;
+      if (query.includes('spotify.com')) searchType = null; // Lavalink nodes usually have spotify support built-in
+
+      const result = await node.rest.resolve(searchType ? `${searchType}:${query}` : query);
+      
+      if (!result || !result.data || (result.loadType === 'empty')) {
+        throw new Error('No results found for your query.');
+      }
+
+      let song = null;
+      let songsToAdd = [];
+
+      if (result.loadType === 'playlist') {
+          songsToAdd = result.data.tracks.map(track => ({
+              title: track.info.title,
+              url: track.info.uri,
+              encoded: track.encoded,
+              duration: new Date(track.info.length).toISOString().slice(11, 19).replace(/^00:/, ''),
+              thumbnail: `https://img.youtube.com/vi/${track.info.identifier}/hqdefault.jpg`,
+              requester: interaction.user.tag
+          }));
+          song = songsToAdd[0];
+      } else if (result.loadType === 'search' || result.loadType === 'track') {
+          const track = result.data instanceof Array ? result.data[0] : result.data;
+          song = {
+              title: track.info.title,
+              url: track.info.uri,
+              encoded: track.encoded,
+              duration: new Date(track.info.length).toISOString().slice(11, 19).replace(/^00:/, ''),
+              thumbnail: `https://img.youtube.com/vi/${track.info.identifier}/hqdefault.jpg`,
+              requester: interaction.user.tag
+          };
+          songsToAdd.push(song);
+      }
+
       if (!song) throw new Error('Could not process that song.');
 
       const queue = getQueue(interaction.guildId);
-      addSongToQueue(interaction.guildId, song);
 
-      // Connect to VC
-      if (!queue.connection) {
-        const connection = joinVoiceChannel({
-          channelId: voiceChannel.id,
-          guildId: interaction.guildId,
-          adapterCreator: interaction.guild.voiceAdapterCreator,
-          selfDeaf: true
-        });
+      // Create player if it doesn't exist
+      if (!queue.player) {
+         try {
+            queue.player = await client.shoukaku.joinVoiceChannel({
+                guildId: interaction.guildId,
+                channelId: voiceChannel.id,
+                shardId: interaction.guild.shardId
+            });
+            
+            queue.player.on('start', () => {
+                queue.isPlaying = true;
+            });
 
-        setConnection(interaction.guildId, connection);
+            queue.player.on('end', () => {
+                queue.isPlaying = false;
+                playNext(interaction.guildId, client, interaction.channel);
+            });
+
+            queue.player.on('exception', (err) => {
+                console.error('Lavalink Exception:', err);
+                queue.isPlaying = false;
+                playNext(interaction.guildId, client, interaction.channel);
+            });
+
+            queue.player.on('closed', () => {
+                queue.player = null;
+                queue.isPlaying = false;
+            });
+
+         } catch (connErr) {
+            console.error('Lavalink Connection Error:', connErr);
+            throw new Error('Failed to connect to the voice channel via Lavalink.');
+         }
       }
 
-      if (queue.isPlaying) {
-         const addEmbed = createEmbed('music', client)
-           .setTitle('🎵 Added to Queue')
-           .setDescription(`**[${song.title}](${song.url})**`)
-           .addFields(
-              { name: '👤 Requester', value: song.requester, inline: true },
-              { name: '📍 Position', value: `#${queue.songs.length}`, inline: true }
-           );
-         if (song.thumbnail) addEmbed.setThumbnail(song.thumbnail);
-         await interaction.editReply({ embeds: [addEmbed] });
+      // Add to queue
+      songsToAdd.forEach(s => addSongToQueue(interaction.guildId, s));
+
+      if (result.loadType === 'playlist') {
+          const playlistEmbed = createEmbed('music', client)
+            .setTitle('🎶 Playlist Added')
+            .setDescription(`Added **${songsToAdd.length}** tracks from the playlist.`)
+            .addFields({ name: '👤 Requester', value: interaction.user.tag });
+          await interaction.editReply({ embeds: [playlistEmbed] });
+      } else if (queue.isPlaying && queue.songs.length > 0) {
+          const addEmbed = createEmbed('music', client)
+            .setTitle('🎵 Added to Queue')
+            .setDescription(`**[${song.title}](${song.url})**`)
+            .addFields(
+               { name: '👤 Requester', value: song.requester, inline: true },
+               { name: '📍 Position', value: `#${queue.songs.length}`, inline: true }
+            );
+          if (song.thumbnail) addEmbed.setThumbnail(song.thumbnail);
+          await interaction.editReply({ embeds: [addEmbed] });
       } else {
-         await interaction.editReply({ 
-             embeds: [createEmbed('music', client).setDescription('⏳ Loading track...')] 
-         });
+          await interaction.editReply({ 
+              embeds: [createEmbed('music', client).setDescription('⏳ Loading track...')] 
+          });
+      }
+
+      if (!queue.isPlaying) {
          playNext(interaction.guildId, client, interaction.channel);
       }
+
     } catch (error) {
        console.error('Play command error:', error);
        const errorEmbed = createEmbed('error', client)
         .setTitle('❌ Error Playing Song')
-        .setDescription(error.message || 'Something went wrong. YouTube might be blocking the bot.');
+        .setDescription(error.message || 'Something went wrong with the Lavalink connection.');
 
-       try {
-         if (interaction.deferred || interaction.replied) {
-           await interaction.editReply({ embeds: [errorEmbed] });
-         } else {
-           await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-         }
-       } catch (e) {
-         console.error('Failed to send error response:', e.message);
+       if (interaction.deferred || interaction.replied) {
+         await interaction.editReply({ embeds: [errorEmbed] });
+       } else {
+         await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
        }
     }
   },
 };
-

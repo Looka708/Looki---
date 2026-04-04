@@ -6,38 +6,37 @@ module.exports = {
   name: 'pause',
   data: new SlashCommandBuilder()
     .setName('pause')
-    .setDescription('⏸️ Pause the current playing song'),
+    .setDescription('Pause the current song ⏸️'),
   execute: async (interaction, client) => {
-    const voiceChannel = interaction.member?.voice?.channel;
+    const queue = getQueue(interaction.guildId);
 
-    if (!voiceChannel) {
+    if (!queue.player || !queue.isPlaying) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Join a Voice Channel')
-        .setDescription('You must be in a voice channel to pause music! 🎵');
+        .setTitle('❌ Nothing Playing')
+        .setDescription('There is no song playing to pause! 🎵');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
-    const queue = getQueue(interaction.guildId);
-
-    if (!queue.audioPlayer || !queue.currentSong) {
-      const emptyEmbed = createEmbed('error', client)
-        .setTitle('❌ Nothing Playing')
-        .setDescription('There is no music playing right now.');
-      return interaction.reply({ embeds: [emptyEmbed], ephemeral: true });
+    if (queue.player.paused) {
+      const errorEmbed = createEmbed('error', client)
+        .setTitle('⏸️ Already Paused')
+        .setDescription('The player is already paused! 🎵');
+      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
-    if (queue.audioPlayer.state.status === 'paused') {
-      const pausedEmbed = createEmbed('error', client)
-        .setDescription('Music is already paused! Use `/resume` to unpause.');
-      return interaction.reply({ embeds: [pausedEmbed], ephemeral: true });
+    try {
+      await interaction.deferReply();
+      await queue.player.pause(true);
+
+      const pauseEmbed = createEmbed('music', client)
+        .setTitle('⏸️ Song Paused')
+        .setDescription(`Paused **[${queue.currentSong?.title}](${queue.currentSong?.url})**! Use /resume to continue! 🎶`);
+      
+      await interaction.editReply({ embeds: [pauseEmbed] });
+      
+    } catch (error) {
+       console.error('Pause error:', error);
+       await interaction.editReply({ content: '❌ Failed to pause the player.' });
     }
-
-    queue.audioPlayer.pause();
-    
-    const embed = createEmbed('music', client)
-      .setTitle('⏸️ Track Paused')
-      .setDescription('Music has been paused. Use `/resume` to continue playing. done bestie ✦');
-
-    await interaction.reply({ embeds: [embed] });
   },
 };

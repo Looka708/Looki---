@@ -11,8 +11,7 @@ function getQueue(guildId) {
       currentSong: null,
       volume: 1,
       isPlaying: false,
-      connection: null,
-      audioPlayer: null,
+      player: null, // Shoukaku Player
       repeat: 'off', // off, one, all
     });
   }
@@ -24,15 +23,6 @@ function addSongToQueue(guildId, song) {
   const queue = getQueue(guildId);
   queue.songs.push(song);
   return queue;
-}
-
-// Remove song from queue
-function removeSongFromQueue(guildId, index) {
-  const queue = getQueue(guildId);
-  if (index >= 0 && index < queue.songs.length) {
-    return queue.songs.splice(index, 1)[0];
-  }
-  return null;
 }
 
 // Get next song
@@ -60,13 +50,19 @@ function clearQueue(guildId) {
   queue.songs = [];
   queue.currentSong = null;
   queue.isPlaying = false;
+  if (queue.player) {
+    queue.player.stopTrack();
+  }
   return queue;
 }
 
-// Set volume (0.1 to 2)
+// Set volume (0 to 100 for Lavalink)
 function setVolume(guildId, volume) {
   const queue = getQueue(guildId);
-  queue.volume = Math.max(0.1, Math.min(2, volume));
+  queue.volume = Math.max(0, Math.min(100, volume));
+  if (queue.player) {
+    queue.player.setGlobalVolume(queue.volume);
+  }
   return queue.volume;
 }
 
@@ -79,40 +75,12 @@ function toggleRepeat(guildId) {
   return queue.repeat;
 }
 
-// Get queue length
-function getQueueLength(guildId) {
-  const queue = getQueue(guildId);
-  return queue.songs.length;
-}
-
-// Get current song
-function getCurrentSong(guildId) {
-  const queue = getQueue(guildId);
-  return queue.currentSong;
-}
-
-// Set current song
-function setCurrentSong(guildId, song) {
-  const queue = getQueue(guildId);
-  queue.currentSong = song;
-  return queue;
-}
-
-// Set connection
-function setConnection(guildId, connection) {
-  const queue = getQueue(guildId);
-  queue.connection = connection;
-  return queue;
-}
-
-// Get connection
-function getConnection(guildId) {
-  const queue = getQueue(guildId);
-  return queue.connection;
-}
-
 // Delete queue
 function deleteQueue(guildId) {
+  const queue = queues.get(guildId);
+  if (queue && queue.player) {
+    queue.player.destroy();
+  }
   queues.delete(guildId);
 }
 
@@ -123,29 +91,13 @@ function setPlaying(guildId, isPlaying) {
   return queue;
 }
 
-// Skip song (remove first from queue)
-function skipSong(guildId) {
-  const queue = getQueue(guildId);
-  if (queue.songs.length > 0) {
-    return queue.songs.shift();
-  }
-  return null;
-}
-
 module.exports = {
   getQueue,
   addSongToQueue,
-  removeSongFromQueue,
   getNextSong,
   clearQueue,
   setVolume,
   toggleRepeat,
-  getQueueLength,
-  getCurrentSong,
-  setCurrentSong,
-  setConnection,
-  getConnection,
   deleteQueue,
   setPlaying,
-  skipSong
 };

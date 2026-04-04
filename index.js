@@ -1,19 +1,22 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 const http = require('http');
 const axios = require('axios');
 
 // 🌸 Environment Debugging ───────────
-process.env.FFMPEG_PATH = fs.existsSync('/tmp/ffmpeg') ? '/tmp/ffmpeg' : require('ffmpeg-static');
-console.log('🌸 [System] ffmpeg Path:', process.env.FFMPEG_PATH);
-console.log('🌸 [System] yt-dlp binary found:', fs.existsSync('/tmp/yt-dlp'));
-try { console.log('🌸 [System] yt-dlp version:', execSync('/tmp/yt-dlp --version').toString().trim()); } 
-catch(e) { console.error('⚠️ [System] yt-dlp exec failed. Will fallback to python3 if possible.'); }
+console.log('🌸 [System] Initializing Looki with Shoukaku Lavalink support...');
 
+const { Shoukaku, Connectors } = require('shoukaku');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { initializeTables } = require('./utils/supabase');
+
+// 🌸 Lavalink Configuration (Public Nodes) ───────────
+const Nodes = [
+  { name: 'Jirayu', url: 'lavalink.jirayu.net:13592', auth: 'youshallnotpass', secure: false },
+  { name: 'DevamOP', url: 'lavalink.devamop.in:443', auth: 'DevamOP', secure: true },
+  { name: 'OopsWTF', url: 'lavalink.oops.wtf:80', auth: 'www.lavalink.oops.wtf', secure: false }
+];
 
 // ── Heartbeat Server (Prevents Koyeb from sleeping) ───────────
 const server = http.createServer((req, res) => {
@@ -54,6 +57,12 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
   ],
 });
+
+// 🌸 Shoukaku Initialization — MUST happen after Client
+const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), Nodes);
+shoukaku.on('ready', (name) => console.log(`🌸 [Lavalink] Node ${name} is ready!`));
+shoukaku.on('error', (name, error) => console.error(`❌ [Lavalink] Node ${name} error:`, error));
+client.shoukaku = shoukaku;
 
 // Initialize command collection
 client.commands = new Collection();

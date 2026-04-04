@@ -1,39 +1,32 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
-const { getQueue, deleteQueue } = require('../../utils/musicManager');
+const { deleteQueue } = require('../../utils/musicManager');
 
 module.exports = {
   name: 'stop',
   data: new SlashCommandBuilder()
     .setName('stop')
-    .setDescription('⏹️ Stops music and clears the queue ✨'),
+    .setDescription('Stop the current song and clear the queue ⏹️'),
   execute: async (interaction, client) => {
-    const voiceChannel = interaction.member?.voice?.channel;
+    try {
+      await interaction.deferReply();
+      
+      const guildId = interaction.guildId;
+      deleteQueue(guildId); // This will destroy the Shoukaku player too
 
-    if (!voiceChannel) {
+      const stopEmbed = createEmbed('music', client)
+        .setTitle('⏹️ Stopped Playing')
+        .setDescription('The queue has been cleared and I have disconnected from the voice channel! 🌸');
+      
+      await interaction.editReply({ embeds: [stopEmbed] });
+      
+    } catch (error) {
+      console.error('Stop command error:', error);
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Join a Voice Channel')
-        .setDescription('You must be in a voice channel to stop music! 🎵');
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        .setTitle('❌ Error Stopping')
+        .setDescription('Something went wrong while trying to stop.');
+      if (interaction.deferred) await interaction.editReply({ embeds: [errorEmbed] });
+      else await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
-
-    const queue = getQueue(interaction.guildId);
-
-    if (!queue || (!queue.currentSong && queue.songs.length === 0 && !queue.isPlaying)) {
-      const emptyEmbed = createEmbed('error', client)
-        .setTitle('❌ Nothing Playing')
-        .setDescription('There is no music currently playing.');
-      return interaction.reply({ embeds: [emptyEmbed], ephemeral: true });
-    }
-
-    if (queue.audioPlayer) queue.audioPlayer.stop(true);
-    if (queue.connection) queue.connection.destroy();
-    deleteQueue(interaction.guildId);
-
-    const embed = createEmbed('success', client)
-      .setTitle('⏹️ Music Stopped')
-      .setDescription('Queue cleared and left the voice channel. done bestie ✦');
-
-    await interaction.reply({ embeds: [embed] });
   },
 };

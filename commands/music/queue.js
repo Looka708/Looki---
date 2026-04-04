@@ -6,57 +6,42 @@ module.exports = {
   name: 'queue',
   data: new SlashCommandBuilder()
     .setName('queue')
-    .setDescription('📋 View the current music queue')
-    .addIntegerOption(option =>
-      option
-        .setName('page')
-        .setDescription('Page number')
-        .setMinValue(1)
-    ),
+    .setDescription('See the current song queue 📜'),
   execute: async (interaction, client) => {
-    const page = interaction.options.getInteger('page') || 1;
     const queue = getQueue(interaction.guildId);
 
-    if (!queue.currentSong && queue.songs.length === 0) {
-      const emptyEmbed = createEmbed('music', client)
-        .setTitle('🎵 Queue is Empty')
-        .setDescription('No songs are currently playing. Add a song with `/play`!');
-
-      await interaction.reply({ embeds: [emptyEmbed], ephemeral: true });
-      return;
+    if (!queue.isPlaying && queue.songs.length === 0) {
+      const errorEmbed = createEmbed('error', client)
+        .setTitle('❌ Queue Empty')
+        .setDescription('There is nothing in the queue! Use /play to add something! 🎵');
+      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
-    // Build queue list
-    let queueList = '';
-
-    if (queue.currentSong) {
-      queueList += `**🎵 Now Playing:**\n\`\`\`\n${queue.currentSong.title}\n\`\`\`\n\n`;
-      queueList += `**📋 Next Up:**\n`;
-    }
-
-    if (queue.songs.length === 0) {
-      queueList += 'No more songs in queue.';
-    } else {
-      queue.songs.slice(0, 10).forEach((song, index) => {
-        queueList += `\`${index + 1}.\` ${song.title} - *${song.requester}*\n`;
-      });
-
-      if (queue.songs.length > 10) {
-        queueList += `\n*... and ${queue.songs.length - 10} more songs*`;
+    try {
+      await interaction.deferReply();
+      
+      const currentSong = queue.currentSong;
+      const nextSongs = queue.songs.slice(0, 10);
+      
+      const queueList = nextSongs.map((song, i) => `${i + 1}. **[${song.title}](${song.url})** | ${song.duration}`).join('\n');
+      
+      const queueEmbed = createEmbed('music', client)
+        .setTitle('📜 Current Queue')
+        .addFields(
+           { name: '🎶 Now Playing', value: `**[${currentSong?.title}](${currentSong?.url})** | ${currentSong?.duration || 'Unknown'}` }
+        );
+      
+      if (queueList) {
+        queueEmbed.addFields({ name: '⏭️ Up Next', value: queueList });
+      } else if (queue.songs.length > 10) {
+        queueEmbed.setFooter({ text: `And ${queue.songs.length - 10} more songs...` });
       }
+
+      await interaction.editReply({ embeds: [queueEmbed] });
+      
+    } catch (error) {
+       console.error('Queue error:', error);
+       await interaction.editReply({ content: '❌ Failed to fetch queue.' });
     }
-
-    const embed = createEmbed('music', client)
-      .setTitle('📋 Music Queue')
-      .setDescription(queueList)
-      .addFields(
-        { name: '📊 Total Songs', value: `${queue.songs.length + (queue.currentSong ? 1 : 0)}`, inline: true },
-        { name: '🔊 Volume', value: `${Math.round(queue.volume * 100)}%`, inline: true },
-        { name: '🔁 Repeat', value: queue.repeat.charAt(0).toUpperCase() + queue.repeat.slice(1) || 'Off', inline: true }
-      )
-      .setThumbnail(queue.currentSong?.thumbnail || 'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg')
-      .setFooter({ text: `Page ${page}` });
-
-    await interaction.reply({ embeds: [embed] });
   },
 };

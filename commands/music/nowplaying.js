@@ -6,48 +6,45 @@ module.exports = {
   name: 'nowplaying',
   data: new SlashCommandBuilder()
     .setName('nowplaying')
-    .setDescription('🎶 See detailed info about the current song'),
+    .setDescription('See information about the song currently playing 🎶'),
   execute: async (interaction, client) => {
     const queue = getQueue(interaction.guildId);
 
-    if (!queue.currentSong) {
-      const emptyEmbed = createEmbed('error', client)
+    if (!queue.player || !queue.isPlaying) {
+      const errorEmbed = createEmbed('error', client)
         .setTitle('❌ Nothing Playing')
-        .setDescription('There is no song playing right now.');
-      return interaction.reply({ embeds: [emptyEmbed], ephemeral: true });
+        .setDescription('There is no song currently playing! 🎵');
+      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
-    const song = queue.currentSong;
-    let playbackTime = 0;
-    
-    if (queue.audioPlayer && queue.audioPlayer.state.status === 'playing' && queue.audioPlayer.state.resource) {
-        playbackTime = queue.audioPlayer.state.resource.playbackDuration;
+    try {
+      await interaction.deferReply();
+      
+      const song = queue.currentSong;
+      const position = queue.player.position;
+      const length = song.duration;
+      
+      // Progress bar (basic)
+      const totalParts = 15;
+      const progress = Math.min(Math.floor((position / (song.durationMs || 1000)) * totalParts), totalParts);
+      const bar = '▬'.repeat(progress) + '○' + '▬'.repeat(totalParts - progress);
+      
+      const npEmbed = createEmbed('music', client)
+        .setTitle('🎶 Now Playing')
+        .setDescription(`**[${song.title}](${song.url})**`)
+        .addFields(
+           { name: '👤 Requester', value: song.requester, inline: true },
+           { name: '⏲️ Duration', value: `${new Date(position).toISOString().substr(11, 8).replace(/^00:/, '')} / ${length}`, inline: true }
+        );
+      
+      if (bar) npEmbed.addFields({ name: 'Progress', value: `\`${bar}\`` });
+      if (song.thumbnail) npEmbed.setThumbnail(song.thumbnail);
+
+      await interaction.editReply({ embeds: [npEmbed] });
+      
+    } catch (error) {
+       console.error('NowPlaying error:', error);
+       await interaction.editReply({ content: '❌ Failed to fetch track information.' });
     }
-
-    // Attempt to format if we have durationRaw from play-dl, else default to unknown
-    // Actually, play-dl handles duration directly. Let's just create a nice embed.
-    
-    // Creating a mock progress bar
-    // Assume typical song is 3:00 if durationRaw is not available/easy to parse, 
-    // but durationRaw is available from yt-search/play-dl
-    
-    const embed = createEmbed('music', client)
-      .setTitle('🎶 Now Playing')
-      .setDescription(`**[${song.title}](${song.url})**`)
-      .addFields(
-        { name: '👤 Requester', value: song.requester, inline: true },
-        { name: '🔊 Volume', value: `${Math.round(queue.volume * 100)}%`, inline: true },
-        { name: '🔁 Loop Mode', value: queue.repeat === 'off' ? 'Off' : (queue.repeat === 'one' ? 'Track' : 'Queue'), inline: true },
-      );
-
-    if (song.durationRaw) {
-       embed.addFields({ name: '⏱️ Duration', value: song.durationRaw, inline: true });
-    }
-
-    if (song.thumbnail) {
-      embed.setThumbnail(song.thumbnail);
-    }
-
-    await interaction.reply({ embeds: [embed] });
   },
 };
