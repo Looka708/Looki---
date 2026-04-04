@@ -2,11 +2,12 @@ const { Innertube, UniversalCache } = require('youtubei.js');
 const yts = require('yt-search');
 let yt;
 
-async function getYouTubeClient() {
-    if (!yt) {
+async function getYouTubeClient(forceNew = false) {
+    if (!yt || forceNew) {
         yt = await Innertube.create({
             cache: new UniversalCache(false),
-            generate_session_locally: true
+            generate_session_locally: true,
+            client_type: 'TV' // TV client is often more resilient to Bot-Guard
         });
     }
     return yt;
