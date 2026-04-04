@@ -20,7 +20,11 @@ module.exports = {
     ),
   execute: async (interaction, client) => {
     // ✅ Defer FIRST, before anything else to prevent 10062 (interaction timeout)
-    try { await interaction.deferReply(); } catch(e) {}
+    try { 
+      await interaction.deferReply(); 
+    } catch(e) {
+      console.error('Failed to defer interaction:', e.message);
+    }
 
     const voiceChannel = interaction.member?.voice?.channel;
 
@@ -28,7 +32,12 @@ module.exports = {
       const errorEmbed = createEmbed('error', client)
         .setTitle('❌ Join a Voice Channel')
         .setDescription('You must be in a voice channel to use music commands! 🎵');
-      return interaction.editReply({ embeds: [errorEmbed] });
+      
+      if (interaction.deferred || interaction.replied) {
+        return interaction.editReply({ embeds: [errorEmbed] });
+      } else {
+        return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      }
     }
 
     try {
@@ -119,7 +128,7 @@ module.exports = {
            };
          }
       }
-
+      
       if (!song) throw new Error('Could not process that song.');
 
       const queue = getQueue(interaction.guildId);
@@ -158,7 +167,16 @@ module.exports = {
        const errorEmbed = createEmbed('error', client)
         .setTitle('❌ Error Playing Song')
         .setDescription(error.message || 'Something went wrong. YouTube might be blocking the bot.');
-       try { await interaction.editReply({ embeds: [errorEmbed] }); } catch (e) {}
+
+       try {
+         if (interaction.deferred || interaction.replied) {
+           await interaction.editReply({ embeds: [errorEmbed] });
+         } else {
+           await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+         }
+       } catch (e) {
+         console.error('Failed to send error response:', e.message);
+       }
     }
   },
 };

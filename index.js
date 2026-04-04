@@ -122,33 +122,6 @@ function loadEvents() {
 async function start() {
   try {
     const token = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
-    // Environment Diagnostics 🌸
-    const { execSync } = require('child_process');
-    const ffmpegPath = require('ffmpeg-static');
-    
-    try {
-        const ffVer = execSync(`${ffmpegPath} -version`).toString().split('\n')[0];
-        console.log(`🌸 [System] ffmpeg Ready: ${ffVer}`);
-    } catch(e) { console.error('❌ [System] ffmpeg-static failed check!'); }
-
-    const localDlPath = path.join(__dirname, 'yt-dlp');
-    if (fs.existsSync(localDlPath)) {
-        try {
-            const ytVer = execSync(`${localDlPath} --version`).toString().trim();
-            console.log(`🌸 [System] Standalone yt-dlp Ready: ${ytVer}`);
-        } catch(e) { 
-            console.log(`⚠️  [System] Found local yt-dlp but failed to run. Check permissions.`); 
-        }
-    } else {
-        const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-        try {
-            const ytVer = execSync(`${pythonCmd} -m yt_dlp --version`).toString().trim();
-            console.log(`🌸 [System] yt-dlp (Python) Ready: ${ytVer}`);
-        } catch(e) { 
-            console.log(`⚠️  [System] yt-dlp not found. It should download via package.json start script.`); 
-        }
-    }
-
     if (!token) {
       console.error('❌ DISCORD_TOKEN / DISCORD_BOT_TOKEN is not set in environment variables');
       process.exit(1);
