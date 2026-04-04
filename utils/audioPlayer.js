@@ -1,30 +1,45 @@
 const { createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus } = require('@discordjs/voice');
 const play = require('play-dl');
 const ytdl = require('@distube/ytdl-core');
+const { getYouTubeClient, getRobustYouTubeStream, getYouTubeSearch } = require('./youtube');
 const { getQueue, deleteQueue } = require('./musicManager');
 const { EmbedBuilder } = require('discord.js');
 const { createEmbed } = require('./embedBuilder');
 
 async function getYouTubeStream(url) {
   try {
-    // Try play-dl first (faster, generally better performance)
+    // 1. Try play-dl (best performance)
     const streamData = await play.stream(url, { discordPlayerCompatibility: true });
     return { stream: streamData.stream, type: streamData.type };
   } catch (error) {
-    // If it's the bot-guard error, fall back to @distube/ytdl-core with IOS client
     if (error.message?.includes('Sign in to confirm you’re not a bot') || error.message?.includes('403')) {
-      console.log(`[Music] Bot-Guard detected for ${url}. Falling back to @distube/ytdl-core (IOS client)...`);
-      
-      const stream = ytdl(url, {
-        filter: 'audioonly',
-        playerClients: ['IOS'], // Crucial bypass for Bot-Guard
-        highWaterMark: 1 << 25,
-      });
-
-      return { stream, type: 'opus' };
+      console.log(`[Music] play-dl Bot-Guard detected for ${url}. Trying ytdl-core...`);
+      try {
+        // 2. Try ytdl-core with IOS client
+        const stream = ytdl(url, {
+          filter: 'audioonly',
+          playerClients: ['IOS'],
+          highWaterMark: 1 << 25,
+        });
+        return { stream, type: 'opus' };
+      } catch (ytdlError) {
+        console.log(`[Music] ytdl-core Bot-Guard detected for ${url}. Using robust fallback (youtubei.js)...`);
+        // 3. Robust fallback (Innertube)
+        return await getRobustYouTubeStream(url);
+      }
     }
-    throw error; // Re-throw other errors
+    throw error;
   }
+}
+
+async function safeSearch(query) {
+    try {
+        const results = await play.search(query, { limit: 1 });
+        if (results.length > 0) return results[0];
+        return await getYouTubeSearch(query);
+    } catch (e) {
+        return await getYouTubeSearch(query);
+    }
 }
 
 async function playNext(guildId, client, textChannel) {
@@ -73,24 +88,21 @@ async function playNext(guildId, client, textChannel) {
        // Spotify support with play-dl
        if (play.is_expired()) await play.refreshToken();
        const sp_data = await play.spotify(song.url);
-       // search for the song on YouTube
-       const search = await play.search(`${sp_data.name} ${sp_data.artists[0]?.name || ''}`, {
-           limit: 1
-       });
-       if (search.length === 0) {
-           throw new Error("Could not find Spotify track on YouTube");
-       }
-       const result = await getYouTubeStream(search[0].url);
+       const search = await safeSearch(`${sp_data.name} ${sp_data.artists[0]?.name || ''}`);
+       if (!search) throw new Error("Could not find Spotify track on YouTube");
+       const result = await getYouTubeStream(search.url);
        stream = result.stream;
        type = result.type;
     } else {
-      const search = await play.search(song.title, { limit: 1 });
-      if (search.length === 0) throw new Error("Track not found");
-      const result = await getYouTubeStream(search[0].url);
+      const search = await safeSearch(song.title);
+      if (!search) throw new Error("Track not found");
+      const result = await getYouTubeStream(search.url);
       stream = result.stream;
       type = result.type;
-      song.url = search[0].url; // update the url
-      if(!song.thumbnail && search[0].thumbnails?.length) song.thumbnail = search[0].thumbnails[0].url;
+      song.url = search.url; // update the url
+      if(!song.thumbnail && (search.thumbnails?.length || search.thumbnail)) {
+          song.thumbnail = search.thumbnails?.[0]?.url || search.thumbnail;
+      }
     }
 
     const resource = createAudioResource(stream, { inputType: type, inlineVolume: true });

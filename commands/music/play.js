@@ -3,6 +3,7 @@ const { createEmbed } = require('../../utils/embedBuilder');
 const { joinVoiceChannel, VoiceConnectionStatus } = require('@discordjs/voice');
 const { getQueue, addSongToQueue, setConnection } = require('../../utils/musicManager');
 const { playNext } = require('../../utils/audioPlayer');
+const { getRobustYouTubeInfo } = require('../../utils/youtube');
 const play = require('play-dl');
 const ytdl = require('@distube/ytdl-core');
 const yts = require('yt-search');
@@ -47,7 +48,7 @@ module.exports = {
          } catch (infoError) {
            console.log(`[Music] play-dl info failed for ${query}. Trying @distube/ytdl-core...`);
            try {
-             // Fallback to @distube/ytdl-core for info
+             // Fallback 1: ytdl-core
              const videoInfo = await ytdl.getBasicInfo(query, { playerClients: ['IOS'] });
              song = {
                title: videoInfo.videoDetails.title,
@@ -58,7 +59,18 @@ module.exports = {
                requesterId: interaction.user.id
              };
            } catch (ytdlError) {
-             throw new Error('Could not retrieve YouTube video info. YouTube might be blocking the request.');
+             console.log(`[Music] ytdl-core info failed for ${query}. Trying youtubei.js...`);
+             try {
+                // Fallback 2: youtubei.js
+                const info = await getRobustYouTubeInfo(query);
+                song = {
+                    ...info,
+                    requester: interaction.user.tag,
+                    requesterId: interaction.user.id
+                };
+             } catch (ytError) {
+                throw new Error('All YouTube info extractors are currently blocked or rate-limited. Please try again later.');
+             }
            }
          }
       } else if (query.includes('spotify.com/track/')) {
