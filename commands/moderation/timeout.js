@@ -63,7 +63,8 @@ module.exports = {
         .addFields(
           { name: '🎀 Duration', value: `\`${durationInput}\``, inline: true },
           { name: '✦ Reason', value: reason, inline: true }
-        );
+        )
+        .setImage('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnhscXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/6rX85pTWUf9V6/giphy.gif');
 
       await interaction.reply({ embeds: [embed] });
 

@@ -1,10 +1,11 @@
 const { createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus } = require('@discordjs/voice');
 const play = require('play-dl');
 const ytdl = require('@distube/ytdl-core');
-const { getYouTubeClient, getRobustYouTubeStream, getYouTubeSearch } = require('./youtube');
+const { getYouTubeClient, getRobustYouTubeStream, getYouTubeSearch, parseCookies } = require('./youtube');
 const { getQueue, deleteQueue } = require('./musicManager');
 const { EmbedBuilder } = require('discord.js');
 const { createEmbed } = require('./embedBuilder');
+const path = require('path');
 
 async function getYouTubeStream(url) {
   try {
@@ -21,11 +22,19 @@ async function getYouTubeStream(url) {
       } catch (robustError) {
         console.log(`[Music] youtubei.js also failed. Trying ytdl-core (last resort)...`);
         try {
-          // 3. Final resort: ytdl-core with IOS client
+          // 3. Final resort: ytdl-core with IOS client and cookies
+          const cookiePath = path.join(__dirname, '../cookies.txt');
+          const cookie = parseCookies(cookiePath);
+          
           const stream = ytdl(url, {
             filter: 'audioonly',
             playerClients: ['IOS'],
             highWaterMark: 1 << 25,
+            requestOptions: {
+               headers: {
+                  cookie: cookie || ''
+               }
+            }
           });
           return { stream, type: 'opus' };
         } catch (finalError) {

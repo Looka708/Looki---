@@ -58,7 +58,8 @@ module.exports = {
           { name: '✦ Case ID', value: `#${caseId}`, inline: true },
           { name: '📝 Reason', value: reason }
         )
-        .setThumbnail(user.displayAvatarURL());
+        .setThumbnail(user.displayAvatarURL())
+        .setImage('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnhscXFqZXZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/H99r2dQWCRmpO/giphy.gif');
 
       await interaction.reply({ embeds: [banEmbed] });
 

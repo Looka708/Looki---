@@ -6,7 +6,12 @@ const kisses = [
   'https://media.giphy.com/media/nyGFcsP0kAobm/giphy.gif',
   'https://media.giphy.com/media/hnNyVPIXgALV6/giphy.gif',
   'https://media.giphy.com/media/QGc8RgRvMonFm/giphy.gif',
-  'https://media.giphy.com/media/W3CJjnkZihqOQ/giphy.gif'
+  'https://media.giphy.com/media/W3CJjnkZihqOQ/giphy.gif',
+  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y1bXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/12V5fmTj0tDqH6/giphy.gif',
+  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnhscXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/bmU7uLxG80Q5a/giphy.gif',
+  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnhscXFqZXZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/oH2V455f5I384/giphy.gif',
+  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnhscXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/jR22gdcPiOLaE/giphy.gif',
+  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnhscXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/vR06hAmS7YmUo/giphy.gif'
 ];
 
 module.exports = {

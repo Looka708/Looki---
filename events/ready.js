@@ -22,7 +22,7 @@ module.exports = {
     }, 30000);
 
     try {
-        const cookiePath = path.join(__dirname, '../Cookies.txt');
+        const cookiePath = path.join(__dirname, '../cookies.txt');
         const cookie = parseCookies(cookiePath);
         
         if (cookie) {

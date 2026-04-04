@@ -42,7 +42,8 @@ module.exports = {
           { name: '🎀 User', value: `<@${user.id}>`, inline: true },
           { name: '✦ Reason', value: reason, inline: true },
           { name: '📋 Case', value: `\`#${caseId}\``, inline: true }
-        );
+        )
+        .setImage('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnhscXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/M9O6H8o487m4pG/giphy.gif');
 
       await interaction.reply({ embeds: [warnEmbed] });
 

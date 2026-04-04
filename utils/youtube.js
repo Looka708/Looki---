@@ -5,8 +5,17 @@ const yts = require('yt-search');
 let yt;
 
 function parseCookies(filePath) {
-    if (!fs.existsSync(filePath)) return null;
-    const content = fs.readFileSync(filePath, 'utf8');
+    // Check both lowercase and uppercase just to be incredibly safe on all OS
+    const possiblePaths = [filePath, filePath.replace('cookies.txt', 'Cookies.txt')];
+    let content = null;
+    for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+            content = fs.readFileSync(p, 'utf8');
+            break;
+        }
+    }
+    if (!content) return null;
+    
     return content.split('\n')
         .filter(line => line && !line.startsWith('#'))
         .map(line => {
@@ -19,7 +28,7 @@ function parseCookies(filePath) {
 
 async function getYouTubeClient(forceNew = false) {
     if (!yt || forceNew) {
-        const cookiePath = path.join(__dirname, '../Cookies.txt');
+        const cookiePath = path.join(__dirname, '../cookies.txt');
         const cookie = parseCookies(cookiePath);
         
         yt = await Innertube.create({

@@ -40,7 +40,8 @@ module.exports = {
       
       const embed = createEmbed('success', client)
         .setTitle('🧼 all clean!')
-        .setDescription(`poof! cleared away \`${toDelete.length}\` messages 🌸`);
+        .setDescription(`poof! cleared away \`${toDelete.length}\` messages 🌸`)
+        .setImage('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnhscXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/m9pQ7XfS6S0m4/giphy.gif');
         
       if (target) {
         embed.setDescription(`poof! cleared away \`${toDelete.length}\` messages from ${target} 🌸`);
