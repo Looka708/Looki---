@@ -4,7 +4,7 @@
   "description": "A soft, hyper-aesthetic Discord bot",
   "main": "index.js",
   "scripts": {
-    "start": "(ffmpeg -version > /dev/null 2>&1 || (echo '❌ ffmpeg NOT FOUND! Music will fail.' && exit 1)) && echo '✅ ffmpeg OK' && node index.js",
+    "start": "curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /tmp/yt-dlp && chmod +x /tmp/yt-dlp && curl -sL https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz | tar -xJ -C /tmp --wildcards '*/ffmpeg' --strip-components=1 && chmod +x /tmp/ffmpeg && node index.js",
     "build": "echo 'Building bot...'",
     "install:ytdlp": "python3 -m pip install -U \"yt-dlp[default]\" || (curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /tmp/yt-dlp && chmod +x /tmp/yt-dlp)",
     "dev": "nodemon index.js",

@@ -1,4 +1,5 @@
 require('dotenv').config();
+process.env.FFMPEG_PATH = require('fs').existsSync('/tmp/ffmpeg') ? '/tmp/ffmpeg' : require('ffmpeg-static');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { initializeTables } = require('./utils/supabase');
 const http = require('http');

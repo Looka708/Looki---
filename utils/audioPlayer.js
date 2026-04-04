@@ -33,6 +33,7 @@ async function getYouTubeStream(url) {
   const { StreamType } = require('@discordjs/voice');
 
   const YTDLP_PATH = fs.existsSync('/tmp/yt-dlp') ? '/tmp/yt-dlp' : (fs.existsSync(path.join(__dirname, '../yt-dlp')) ? path.join(__dirname, '../yt-dlp') : 'yt-dlp');
+  const FFMPEG_PATH = fs.existsSync('/tmp/ffmpeg') ? '/tmp/ffmpeg' : (process.env.FFMPEG_PATH || 'ffmpeg');
   const cookiePath = path.join(__dirname, '../cookies.txt');
 
   const ytArgs = [
@@ -65,19 +66,22 @@ async function getYouTubeStream(url) {
       let finalYtdlpCmd = YTDLP_PATH;
       let finalYtdlpArgs = ytArgs;
       
-      if (YTDLP_PATH === 'yt-dlp') {
-          // Check if system yt-dlp exists, otherwise use python
-          try {
-              require('child_process').execSync('yt-dlp --version');
-          } catch(e) {
-              finalYtdlpCmd = process.platform === 'win32' ? 'python' : 'python3';
-              finalYtdlpArgs = ['-m', 'yt_dlp', ...ytArgs];
-              console.log(`🌸 [yt-dlp] Falling back to ${finalYtdlpCmd} -m yt_dlp`);
+      if (YTDLP_PATH === 'yt-dlp' || YTDLP_PATH === '/tmp/yt-dlp') {
+          // Check if the binary was downloaded successfully, else use python
+          if (!fs.existsSync(YTDLP_PATH)) {
+              try {
+                  console.log(`🌸 [yt-dlp] Trying system yt-dlp...`);
+                  require('child_process').execSync('yt-dlp --version');
+              } catch(e) {
+                  finalYtdlpCmd = process.platform === 'win32' ? 'python' : 'python3';
+                  finalYtdlpArgs = ['-m', 'yt_dlp', ...ytArgs];
+                  console.log(`🌸 [yt-dlp] Falling back to ${finalYtdlpCmd} -m yt_dlp`);
+              }
           }
       }
 
       const ytdlp = spawn(finalYtdlpCmd, finalYtdlpArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
-      const ffmpeg = spawn(ffmpegPath || 'ffmpeg', ffArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
+      const ffmpeg = spawn(FFMPEG_PATH, ffArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
 
       ytdlp.stdout.pipe(ffmpeg.stdin);
 
