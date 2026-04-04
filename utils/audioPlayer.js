@@ -40,26 +40,43 @@ async function getYouTubeStream(url) {
   // 2. yt-dlp Subprocess (Raw output)
   return new Promise((resolve, reject) => {
     const cookiePath = path.join(__dirname, '../cookies.txt');
-    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const localDlPath = path.join(__dirname, '../yt-dlp');
     
-    // Simpler, faster command for streaming
-    const args = [
-      '-m', 'yt_dlp',
-      '--no-playlist',
-      '--no-warnings',
-      '--ignore-errors',
-      '--no-part',         // Stay in memory, no temporary files
-      '-f', 'bestaudio/best', // Fetch the cleanest bitstream
-      '-o', '-',           // Pipe to stdout
-      url
-    ];
+    let cmd, args;
+    
+    if (fs.existsSync(localDlPath)) {
+      cmd = localDlPath;
+      args = [
+        '--no-playlist',
+        '--no-warnings',
+        '--ignore-errors',
+        '--no-part',         
+        '-f', 'bestaudio/best', 
+        '-o', '-',           
+        url
+      ];
+      console.log('🌸 [yt-dlp] Using standalone binary');
+    } else {
+      cmd = process.platform === 'win32' ? 'python' : 'python3';
+      args = [
+        '-m', 'yt_dlp',
+        '--no-playlist',
+        '--no-warnings',
+        '--ignore-errors',
+        '--no-part',
+        '-f', 'bestaudio/best',
+        '-o', '-',
+        url
+      ];
+      console.log(`🌸 [yt-dlp] Falling back to ${cmd} -m yt_dlp`);
+    }
 
     if (fs.existsSync(cookiePath)) {
       args.push('--cookies', cookiePath);
-      console.log('🌸 [yt-dlp] Using cookies.txt for auth');
+      console.log('🌸 [yt-dlp] Adding cookies.txt for authentication');
     }
 
-    const ytdlp = spawn(pythonCmd, args);
+    const ytdlp = spawn(cmd, args);
     const passthrough = new PassThrough();
 
     ytdlp.stdout.pipe(passthrough);
@@ -76,7 +93,7 @@ async function getYouTubeStream(url) {
     });
 
     ytdlp.on('spawn', () => {
-      console.log('🌸 [yt-dlp] Stream pipeline established');
+      console.log('🌸 [yt-dlp] Pipeline established');
       resolve({ stream: passthrough, type: StreamType.Arbitrary });
     });
   });
