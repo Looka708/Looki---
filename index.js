@@ -1,8 +1,33 @@
 require('dotenv').config();
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { initializeTables } = require('./utils/supabase');
+const http = require('http');
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+
+// ── Heartbeat Server (Prevents Koyeb from sleeping) ───────────
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('Looki Bot is awake and flourishing 🌸\n');
+});
+
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+  console.log(`🌸 Heartbeat server listening on port ${PORT}`);
+});
+
+// Self-ping to keep service active (optional but recommended for free tiers)
+if (process.env.SELF_URL) {
+  setInterval(async () => {
+    try {
+      await axios.get(process.env.SELF_URL);
+      console.log('💓 Self-ping successful: Staying awake!');
+    } catch (err) {
+      console.error('💓 Self-ping failed:', err.message);
+    }
+  }, 900000); // Ping every 15 minutes
+}
 
 const client = new Client({
   intents: [
