@@ -79,11 +79,29 @@ module.exports = {
       // Create player if it doesn't exist
       if (!queue.player) {
          try {
-            queue.player = await client.shoukaku.joinVoiceChannel({
-                guildId: interaction.guildId,
-                channelId: voiceChannel.id,
-                shardId: interaction.guild.shardId
-            });
+            // Robust join with retry for 'missing connection endpoint' errors
+            let player;
+            try {
+                player = await client.shoukaku.joinVoiceChannel({
+                    guildId: interaction.guildId,
+                    channelId: voiceChannel.id,
+                    shardId: interaction.guild.shardId ?? 0
+                });
+            } catch (err) {
+                if (err.message.includes('missing connection endpoint')) {
+                    console.log('🌸 [Lavalink] Connection endpoint missing, retrying in 1.5s...');
+                    await new Promise(r => setTimeout(r, 1500));
+                    player = await client.shoukaku.joinVoiceChannel({
+                        guildId: interaction.guildId,
+                        channelId: voiceChannel.id,
+                        shardId: interaction.guild.shardId ?? 0
+                    });
+                } else {
+                    throw err;
+                }
+            }
+            
+            queue.player = player;
             
             queue.player.on('start', () => {
                 queue.isPlaying = true;
