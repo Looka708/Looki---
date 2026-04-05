@@ -19,7 +19,8 @@ async function playNext(guildId, client, channel) {
   queue.isPlaying = true;
 
   try {
-    await queue.player.playTrack({ track: song.encoded });
+    // Shoukaku v4 track mapping for player update
+    await queue.player.playTrack({ track: { encoded: song.encoded } });
 
     const playEmbed = createEmbed('music', client)
       .setTitle('🎶 Now Playing')

@@ -34,7 +34,7 @@ module.exports = {
         .setDescription(`**[${song.title}](${song.url})**`)
         .addFields(
            { name: '👤 Requester', value: song.requester, inline: true },
-           { name: '⏲️ Duration', value: `${new Date(position).toISOString().substr(11, 8).replace(/^00:/, '')} / ${length}`, inline: true }
+           { name: '⏲️ Duration', value: `${new Date(position || 0).toISOString().substr(11, 8).replace(/^00:/, '')} / ${length}`, inline: true }
         );
       
       if (bar) npEmbed.addFields({ name: 'Progress', value: `\`${bar}\`` });
