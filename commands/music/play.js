@@ -42,7 +42,8 @@ module.exports = {
       }
 
       // ── Load tracks (Shoukaku v4 correct method) ───────────
-      const result = await node.rest.loadTracks(searchQuery);
+      const result = await node.rest.resolve(searchQuery);
+      console.log('🌸 [Lavalink] loadType:', result?.loadType, '| data type:', Array.isArray(result?.data) ? 'array' : typeof result?.data);
 
       if (!result || result.loadType === 'empty' || result.loadType === 'error') {
         throw new Error('No results found for your query.');
@@ -63,8 +64,20 @@ module.exports = {
           requester: interaction.user.tag,
         }));
         song = songsToAdd[0];
-      } else {
-        const track = result.loadType === 'search' ? result.data[0] : result.data;
+      } else if (result.loadType === 'search') {
+        const track = result.data[0]; 
+        song = {
+          title: track.info.title,
+          url: track.info.uri,
+          encoded: track.encoded,
+          duration: formatDuration(track.info.length),
+          durationMs: track.info.length,
+          thumbnail: `https://img.youtube.com/vi/${track.info.identifier}/hqdefault.jpg`,
+          requester: interaction.user.tag,
+        };
+        songsToAdd.push(song);
+      } else if (result.loadType === 'track') {
+        const track = result.data; 
         song = {
           title: track.info.title,
           url: track.info.uri,
