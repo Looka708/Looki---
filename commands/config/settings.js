@@ -53,24 +53,37 @@ module.exports = {
 
     switch (subcommand) {
       case 'view':
+        const { getOrCreateConfig } = require('../../models/ServerConfig');
+        const currentConfig = await getOrCreateConfig(interaction.guildId);
+        
         embed
           .setDescription('Current Server Configuration')
           .addFields(
-            { name: '🎯 Prefix', value: '`p!`', inline: true },
-            { name: '📋 Modlog Channel', value: '<#mod-logs>', inline: true },
-            { name: '👋 Welcome Channel', value: '<#welcome>', inline: true },
+            { name: '🎯 Prefix', value: `\`${currentConfig.prefix || 'p!'}\``, inline: true },
+            { name: '📋 Modlog Channel', value: currentConfig.modlog_channel ? `<#${currentConfig.modlog_channel}>` : '`Not Set`', inline: true },
+            { name: '👋 Welcome Channel', value: currentConfig.welcome_channel ? `<#${currentConfig.welcome_channel}>` : '`Not Set`', inline: true },
             { name: '📊 XP System', value: 'Enabled', inline: true },
-            { name: '🤖 AutoMod', value: 'Disabled', inline: true },
+            { name: '🤖 AutoMod', value: currentConfig.automod_enabled ? 'Enabled' : 'Disabled', inline: true },
             { name: '🎵 Music', value: 'Enabled', inline: true }
           );
         break;
 
       case 'prefix':
-        const prefix = interaction.options.getString('prefix');
+        const newPrefix = interaction.options.getString('prefix');
+        if (newPrefix.length > 5) {
+          return interaction.reply({ 
+            content: '❌ Prefix must be 5 characters or less!', 
+            ephemeral: true 
+          });
+        }
+        
+        const { setConfigValue } = require('../../models/ServerConfig');
+        await setConfigValue(interaction.guildId, 'prefix', newPrefix);
+
         embed
-          .setDescription(`✓ Prefix changed to \`${prefix}\``)
+          .setDescription(`✓ Prefix changed to \`${newPrefix}\``)
           .addFields(
-            { name: 'Example', value: `Use \`${prefix}help\` for commands` }
+            { name: 'Example', value: `Use \`${newPrefix}ping\` for commands` }
           );
         break;
 

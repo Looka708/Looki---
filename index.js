@@ -98,9 +98,15 @@ function loadCommands() {
       const filePath = path.join(categoryPath, file);
       try {
         const command = require(filePath);
-        if (command.data || command.name) {
-          client.commands.set(command.data?.name || command.name, command);
-          client.prefixCommands.set(command.name, command);
+        const commandName = command.name || command.data?.name;
+        
+        if (commandName) {
+          client.commands.set(commandName, command);
+          client.prefixCommands.set(commandName, command);
+          
+          if (command.aliases && Array.isArray(command.aliases)) {
+            command.aliases.forEach(alias => client.prefixCommands.set(alias, command));
+          }
         }
       } catch (error) {
         console.error(`Error loading command ${file}:`, error);

@@ -96,37 +96,29 @@ module.exports = {
       const queue = getQueue(interaction.guildId);
 
       if (!queue.player) {
-        try {
-          await new Promise(r => setTimeout(r, 300)); // let Discord voice state settle
-          const player = await client.shoukaku.joinVoiceChannel({
-            guildId: interaction.guildId,
-            channelId: voiceChannel.id,
-            shardId: interaction.guild.shardId ?? 0,
-          });
+        // 🌸 Check if Shoukaku actually has an internal player (Recovery)
+        const existingPlayer = client.shoukaku.players.get(interaction.guildId);
 
-          queue.player = player;
+        if (existingPlayer) {
+          queue.player = existingPlayer;
+          attachPlayerEvents(existingPlayer, interaction.guildId, client, interaction.channel, queue);
+          console.log(`🌸 [Lavalink] Re-attached to existing player for guild ${interaction.guildId}`);
+        } else {
+          try {
+            await new Promise(r => setTimeout(r, 300)); // wait for voice state
+            const player = await client.shoukaku.joinVoiceChannel({
+              guildId: interaction.guildId,
+              channelId: voiceChannel.id,
+              shardId: interaction.guild.shardId ?? 0,
+            });
 
-          player.on('start', () => { queue.isPlaying = true; });
+            queue.player = player;
+            attachPlayerEvents(player, interaction.guildId, client, interaction.channel, queue);
 
-          player.on('end', () => {
-            queue.isPlaying = false;
-            playNext(interaction.guildId, client, interaction.channel);
-          });
-
-          player.on('exception', (err) => {
-            console.error('🌸 [Lavalink] Track exception:', err?.message || err);
-            queue.isPlaying = false;
-            playNext(interaction.guildId, client, interaction.channel);
-          });
-
-          player.on('closed', () => {
-            queue.player = null;
-            queue.isPlaying = false;
-          });
-
-        } catch (err) {
-          console.error('Lavalink Connection Error:', err);
-          throw new Error('Failed to connect to the voice channel. Please try again.');
+          } catch (err) {
+            console.error('Lavalink Connection Error:', err);
+            throw new Error('Failed to connect to the voice channel. Please try again.');
+          }
         }
       }
 
@@ -171,6 +163,33 @@ module.exports = {
     }
   },
 };
+
+// 🌸 Helper: Attach Player Events ───────────
+function attachPlayerEvents(player, guildId, client, channel, queue) {
+  // Clear any old listeners if this is a reused player
+  player.removeAllListeners();
+
+  player.on('start', () => { 
+    queue.isPlaying = true; 
+  });
+
+  player.on('end', () => {
+    queue.isPlaying = false;
+    playNext(guildId, client, channel);
+  });
+
+  player.on('exception', (err) => {
+    console.error('🌸 [Lavalink] Track exception:', err?.message || err);
+    queue.isPlaying = false;
+    playNext(guildId, client, channel);
+  });
+
+  player.on('closed', () => {
+    queue.player = null;
+    queue.isPlaying = false;
+    console.log(`🌸 [Lavalink] Connection closed for guild ${guildId}`);
+  });
+}
 
 function formatDuration(ms) {
   if (!ms) return 'Unknown';

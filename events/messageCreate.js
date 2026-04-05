@@ -15,23 +15,29 @@ const xpCooldowns = new Map();
 const XP_COOLDOWN_MS = 60000; // 1 minute
 const XP_GAIN = 10; // XP per message
 const LEVEL_UP_THRESHOLD = 100; // XP for level up
-
 module.exports = {
   name: 'messageCreate',
   execute: async (message, client) => {
     if (message.author.bot || !message.guild) return;
 
-    // Handle prefix commands
-    const prefix = '~';
-    if (message.content.startsWith(prefix)) {
-      await handlePrefixCommand(message, client, prefix);
+    // 🌸 1. Fetch Server Config (Dynamic Prefix Support) ───────────
+    const config = await getOrCreateConfig(message.guildId);
+    const prefix = config?.prefix || 'p!'; // Fallback to p!
+
+    // 🌸 2. Check for Prefix or Bot Mention ───────────
+    const mentionRegex = new RegExp(`^<@!?${client.user.id}> `);
+    const hasMention = message.content.match(mentionRegex);
+    const usedPrefix = hasMention ? hasMention[0] : prefix;
+
+    if (message.content.startsWith(prefix) || hasMention) {
+      await handlePrefixCommand(message, client, usedPrefix);
       return;
     }
 
-    // Handle AutoMod checks
+    // 🌸 3. Handle AutoMod checks
     await handleAutoMod(message, client);
 
-    // Handle XP gain from messages
+    // 🌸 4. Handle XP gain from messages
     await handleXPGain(message, client);
   },
 };
@@ -43,11 +49,88 @@ async function handlePrefixCommand(message, client, prefix) {
   const command = client.prefixCommands.get(commandName);
   if (!command) return;
 
+  // 🌸 Interaction Proxy (Mimics SlashCommandInteraction) ───────────
+  // This allows the same command.execute() to work for both Slash and Prefix!
+  const interactionProxy = {
+    isChatInputCommand: () => true, // Some commands might check this
+    guildId: message.guildId,
+    channelId: message.channelId,
+    guild: message.guild,
+    channel: message.channel,
+    member: message.member,
+    user: message.author,
+    author: message.author, // Fallback
+    createdTimestamp: message.createdTimestamp,
+    deferred: false,
+    replied: false,
+    ephemeral: false,
+
+    // Proxy methods for interaction-like behavior
+    reply: async (payload) => {
+      interactionProxy.replied = true;
+      return message.reply(payload);
+    },
+    deferReply: async (options) => {
+      interactionProxy.deferred = true;
+      if (options?.ephemeral) interactionProxy.ephemeral = true;
+      // We don't really defer on prefix, but some commands call it then editReply
+      // So let's send a placeholder or just wait
+      const thinking = await message.reply('🌸 *Processing command...*');
+      interactionProxy.lastMessage = thinking;
+      return thinking;
+    },
+    editReply: async (payload) => {
+      interactionProxy.replied = true;
+      if (interactionProxy.lastMessage) {
+        return interactionProxy.lastMessage.edit(payload);
+      }
+      return message.reply(payload);
+    },
+    followUp: async (payload) => {
+      return message.reply(payload);
+    },
+    deleteReply: async () => {
+      if (interactionProxy.lastMessage) return interactionProxy.lastMessage.delete().catch(() => {});
+    },
+
+    // Proxy for options
+    options: {
+      getString: (name) => {
+        // Simple heuristic: if the command expects 'query', return the full args
+        // For more complex usage, we'd need to parse data properties
+        return args.join(' ');
+      },
+      getUser: (name) => {
+        const mention = message.mentions.users.first();
+        return mention || client.users.cache.get(args[0]);
+      },
+      getMember: (name) => {
+        const mention = message.mentions.members.first();
+        return mention || message.guild.members.cache.get(args[0]);
+      },
+      getInteger: (name) => parseInt(args[0]),
+      getNumber: (name) => parseFloat(args[0]),
+      getBoolean: (name) => ['true', 'on', 'yes'].includes(args[0]?.toLowerCase()),
+      getChannel: (name) => message.mentions.channels.first() || message.guild.channels.cache.get(args[0])
+    }
+  };
+
   try {
-    await command.execute(message, args, client);
+    // 🌸 Execute command with proxy
+    await command.execute(interactionProxy, client);
   } catch (error) {
-    console.error(error);
-    await message.reply({ content: 'hmm that didn\'t work :( try again?' });
+    console.error(`ERROR in Prefix Command (${commandName}):`, error);
+    const errorEmbed = new EmbedBuilder()
+      .setColor(0xF4C2C2)
+      .setTitle('❌ Error')
+      .setDescription('hmm that didn\'t work :( check the prefix/args and try again?')
+      .setTimestamp();
+
+    if (interactionProxy.deferred || interactionProxy.replied) {
+      await interactionProxy.editReply({ embeds: [errorEmbed] }).catch(() => {});
+    } else {
+      await message.reply({ embeds: [errorEmbed] }).catch(() => {});
+    }
   }
 }
 

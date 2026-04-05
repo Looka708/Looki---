@@ -15,6 +15,7 @@ async function getOrCreateConfig(guildId) {
       .insert([
         {
           guild_id: guildId,
+          prefix: 'p!', // Default from schema
           modlog_channel: null,
           mute_role: null,
           autoroles: [],
