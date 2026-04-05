@@ -25,40 +25,45 @@ async function playNext(guildId, client, channel) {
 
     // ── Build Embed ───────────
     const playEmbed = createEmbed('music', client)
-      .setTitle('🎶 Now Playing')
-      .setDescription(`**[${song.title}](${song.url})**`)
+      .setAuthor({ 
+        name: 'Now Playing', 
+        iconURL: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png' 
+      })
+      .setTitle(`${song.title}`)
+      .setURL(song.url)
+      .setColor(0x3498DB) // Sleek Blue
       .addFields(
-        { name: '👤 Requester', value: song.requester, inline: true },
-        { name: '⏲️ Duration', value: song.duration, inline: true },
-        { name: '🔁 Loop', value: `\`${queue.repeat.toUpperCase()}\``, inline: true }
-      );
-    if (song.thumbnail) playEmbed.setThumbnail(song.thumbnail);
+        { name: '👤 Artist', value: `\`${song.author || 'Unknown'}\``, inline: true },
+        { name: '⏲️ Duration', value: `\`${song.duration}\``, inline: true },
+        { name: '👥 Requested by', value: `${song.requester} 🤫`, inline: true },
+        { name: '🕒 Last Activity', value: `\`Playing: ${song.title} by ${song.requester}\``, inline: true },
+        { name: '▶️ Autoplay', value: `\`Disabled\``, inline: true },
+        { name: '📝 Lyrics', value: '```Live Lyrics is included with Pro and higher plans.```' }
+      )
+      .setImage(song.thumbnail)
+      .setFooter({ 
+        text: `✦ looki~ • ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`, 
+        iconURL: client.user.displayAvatarURL() 
+      });
 
-    // ── Build Buttons (Thematic Aesthetic) ───────────
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('music_pause_resume')
-        .setLabel('⏯️')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('music_skip')
-        .setLabel('⏭️')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('music_stop')
-        .setLabel('⏹️')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('music_loop')
-        .setLabel('🔁')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('music_queue')
-        .setLabel('📜')
-        .setStyle(ButtonStyle.Secondary)
+    // ── Build Buttons (2-Row Layout) ───────────
+    const row1 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_previous').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_pause_resume').setEmoji('⏯️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_skip').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_loop').setEmoji('🔁').setStyle(ButtonStyle.Secondary)
     );
 
-    if (channel) channel.send({ embeds: [playEmbed], components: [row] });
+    const row2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('music_clear').setEmoji('🗑️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_vol_down').setEmoji('◀️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('music_vol_up').setEmoji('▶️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_like').setEmoji('🤍').setStyle(ButtonStyle.Secondary)
+    );
+
+    if (channel) channel.send({ embeds: [playEmbed], components: [row1, row2] });
 
   } catch (error) {
     console.error('Lavalink Play Error:', error);

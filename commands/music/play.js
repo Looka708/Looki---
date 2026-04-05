@@ -57,11 +57,13 @@ module.exports = {
         songsToAdd = result.data.tracks.map(track => ({
           title: track.info.title,
           url: track.info.uri,
+          author: track.info.author,
           encoded: track.encoded,
           duration: formatDuration(track.info.length),
           durationMs: track.info.length,
           thumbnail: `https://img.youtube.com/vi/${track.info.identifier}/hqdefault.jpg`,
           requester: interaction.user.tag,
+          requesterAvatar: interaction.user.displayAvatarURL(),
         }));
         song = songsToAdd[0];
       } else if (result.loadType === 'search') {
@@ -69,11 +71,13 @@ module.exports = {
         song = {
           title: track.info.title,
           url: track.info.uri,
+          author: track.info.author,
           encoded: track.encoded,
           duration: formatDuration(track.info.length),
           durationMs: track.info.length,
           thumbnail: `https://img.youtube.com/vi/${track.info.identifier}/hqdefault.jpg`,
           requester: interaction.user.tag,
+          requesterAvatar: interaction.user.displayAvatarURL(),
         };
         songsToAdd.push(song);
       } else if (result.loadType === 'track') {
@@ -81,11 +85,13 @@ module.exports = {
         song = {
           title: track.info.title,
           url: track.info.uri,
+          author: track.info.author,
           encoded: track.encoded,
           duration: formatDuration(track.info.length),
           durationMs: track.info.length,
           thumbnail: `https://img.youtube.com/vi/${track.info.identifier}/hqdefault.jpg`,
           requester: interaction.user.tag,
+          requesterAvatar: interaction.user.displayAvatarURL(),
         };
         songsToAdd.push(song);
       }

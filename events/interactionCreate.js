@@ -36,7 +36,7 @@ module.exports = {
 };
 
 async function handleMusicButtons(interaction, client) {
-  const { getQueue, toggleRepeat, clearQueue } = require('../utils/musicManager');
+  const { getQueue, toggleRepeat, clearQueue, shuffleQueue, getPreviousSong, setVolume } = require('../utils/musicManager');
   const { playNext } = require('../utils/audioPlayer');
   const { createEmbed } = require('../utils/embedBuilder');
   
@@ -68,14 +68,50 @@ async function handleMusicButtons(interaction, client) {
         await interaction.reply({ content: `⏭️ Skipped by ${interaction.user}` });
         break;
 
+      case 'music_previous':
+        const prev = getPreviousSong(interaction.guildId);
+        if (!prev) return interaction.reply({ content: '❌ No previous songs in history!', ephemeral: true });
+        
+        await queue.player.stopTrack(); // playNext will be called and pick up 'prev'
+        await interaction.reply({ content: `⏮️ Moving back to: **${prev.title}**` });
+        break;
+
+      case 'music_shuffle':
+        const shuffled = shuffleQueue(interaction.guildId);
+        await interaction.reply({ 
+          content: shuffled ? `🔀 Queue shuffled by ${interaction.user}` : '❌ Not enough songs to shuffle!', 
+          ephemeral: !shuffled 
+        });
+        break;
+
       case 'music_stop':
         clearQueue(interaction.guildId);
-        await interaction.reply({ content: `⏹️ Stopped and cleared by ${interaction.user}` });
+        if (queue.player) queue.player.destroy();
+        await interaction.reply({ content: `⏹️ Stopped and disconnected by ${interaction.user}` });
+        break;
+
+      case 'music_clear':
+        queue.songs = [];
+        await interaction.reply({ content: `🗑️ Queue cleared by ${interaction.user}` });
+        break;
+
+      case 'music_vol_up':
+        const newVolUp = setVolume(interaction.guildId, queue.volume + 10);
+        await interaction.reply({ content: `🔊 Volume increased to **${newVolUp}%**`, ephemeral: true });
+        break;
+
+      case 'music_vol_down':
+        const newVolDown = setVolume(interaction.guildId, queue.volume - 10);
+        await interaction.reply({ content: `🔉 Volume decreased to **${newVolDown}%**`, ephemeral: true });
         break;
 
       case 'music_loop':
         const mode = toggleRepeat(interaction.guildId);
         await interaction.reply({ content: `🔁 Loop mode: **${mode.toUpperCase()}**` });
+        break;
+
+      case 'music_like':
+        await interaction.reply({ content: `❤️ Added **${queue.currentSong.title}** to your favorites!`, ephemeral: true });
         break;
 
       case 'music_queue':
