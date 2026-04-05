@@ -59,7 +59,13 @@ const client = new Client({
 });
 
 // 🌸 Shoukaku Initialization — MUST happen after Client
-const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), Nodes);
+const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), Nodes, {
+    moveOnDisconnect: false,
+    resumable: false,
+    resumableTimeout: 30,
+    reconnectTries: 3,
+    restTimeout: 10000,
+});
 shoukaku.on('ready', (name) => console.log(`🌸 [Lavalink] Node ${name} is ready!`));
 shoukaku.on('error', (name, error) => console.error(`❌ [Lavalink] Node ${name} error:`, error));
 client.shoukaku = shoukaku;
