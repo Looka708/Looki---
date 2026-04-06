@@ -43,18 +43,18 @@ module.exports = {
       const progressBar = '█'.repeat(filledSegments) + '░'.repeat(emptySegments);
 
       const embed = createEmbed('levels', client)
-        .setTitle(`📊 ${user.username}'s Rank Card`)
+        .setTitle(`🎀 ${user.username}'s Rank Card`)
         .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
         .addFields(
           { name: '🏆 Server Rank', value: `#${rank}`, inline: true },
-          { name: '⭐ Level', value: `${xpData.level}`, inline: true },
+          { name: '✨ Level', value: `${xpData.level}`, inline: true },
           { name: '💎 Total XP', value: `${xpData.xp.toLocaleString()} XP`, inline: true },
           { 
-            name: '📈 XP Progress', 
+            name: '🎀 XP Progress', 
             value: `\`${progressBar}\` ${Math.floor(xpProgress)}%\n${currentLevelProgress.toLocaleString()}/${xpNeeded.toLocaleString()} XP`,
             inline: false 
           },
-          { name: '👤 Account Age', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true },
+          { name: '🦋 Account Age', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true },
           { name: '📅 Join Date', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: true }
         )
         .setFooter({ text: `Rank Card • Top ${rank} of ${leaderboard.length} members` });

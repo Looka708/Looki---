@@ -23,7 +23,7 @@ module.exports = {
     } catch (error) {
       console.error('Stop command error:', error);
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Error Stopping')
+        .setTitle('🥺 Error Stopping')
         .setDescription('Something went wrong while trying to stop.');
       if (interaction.deferred) await interaction.editReply({ embeds: [errorEmbed] });
       else await interaction.reply({ embeds: [errorEmbed], ephemeral: true });

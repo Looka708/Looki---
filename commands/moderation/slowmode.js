@@ -34,7 +34,7 @@ module.exports = {
 
         if (!slowmodeSeconds || slowmodeSeconds < 0 || slowmodeSeconds > 21600) {
           const errorEmbed = createEmbed('error', client)
-            .setTitle('❌ invalid slowmode')
+            .setTitle('🥺 invalid slowmode')
             .setDescription('slowmode must be between `1s` and `6h` 🎀');
           return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
         }

@@ -28,7 +28,7 @@ module.exports = {
       const member = await interaction.guild.members.fetch(user.id).catch(() => null);
       if (member && !member.bannable) {
         const errorEmbed = createEmbed('error', client)
-          .setTitle('❌ Cannot Ban User')
+          .setTitle('🥺 Cannot Ban User')
           .setDescription('This user cannot be banned. They may have a higher role.');
 
         await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
@@ -51,7 +51,7 @@ module.exports = {
 
       // Create public embed
       const banEmbed = createEmbed('moderation', client)
-        .setTitle('🚫 User Banned')
+        .setTitle('🦋 User Banned')
         .setDescription(`${user.tag} has been banned from the server`)
         .addFields(
           { name: '🎀 User', value: `<@${user.id}>`, inline: true },
@@ -69,9 +69,9 @@ module.exports = {
         const modlogChannel = interaction.guild.channels.cache.get(config.modlog_channel);
         if (modlogChannel?.isTextBased()) {
           const modlogEmbed = createEmbed('moderation', client)
-            .setTitle('🚫 Ban Logged')
+            .setTitle('🦋 Ban Logged')
             .addFields(
-              { name: '👤 User', value: `${user.tag} (${user.id})`, inline: true },
+              { name: '🦋 User', value: `${user.tag} (${user.id})`, inline: true },
               { name: '👮 Moderator', value: `${interaction.user.tag}`, inline: true },
               { name: '✦ Case', value: `#${caseId}`, inline: true },
               { name: '📝 Reason', value: reason }
@@ -86,7 +86,7 @@ module.exports = {
       try {
         const dmEmbed = new EmbedBuilder()
           .setColor(0xFF9EAE)
-          .setTitle('🚫 You\'ve been banned')
+          .setTitle('🦋 You\'ve been banned')
           .setDescription(`You were banned from \`${interaction.guild.name}\``)
           .addFields(
             { name: '🎀 Reason', value: reason },
@@ -101,7 +101,7 @@ module.exports = {
     } catch (error) {
       console.error(error);
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Ban Failed')
+        .setTitle('🥺 Ban Failed')
         .setDescription('hmm that didn\'t work :( try again?');
 
       await interaction.reply({ embeds: [errorEmbed], ephemeral: true });

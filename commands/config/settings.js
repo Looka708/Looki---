@@ -5,7 +5,7 @@ module.exports = {
   name: 'settings',
   data: new SlashCommandBuilder()
     .setName('settings')
-    .setDescription('⚙️ View and manage bot settings')
+    .setDescription('✨ View and manage bot settings')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand(subcommand =>
       subcommand
@@ -49,7 +49,7 @@ module.exports = {
     const subcommand = interaction.options.getSubcommand();
 
     const embed = createEmbed('info', client)
-      .setTitle('⚙️ Server Settings');
+      .setTitle('✨ Server Settings');
 
     switch (subcommand) {
       case 'view':
@@ -62,9 +62,9 @@ module.exports = {
             { name: '🎯 Prefix', value: `\`${currentConfig.prefix || 'p!'}\``, inline: true },
             { name: '📋 Modlog Channel', value: currentConfig.modlog_channel ? `<#${currentConfig.modlog_channel}>` : '`Not Set`', inline: true },
             { name: '👋 Welcome Channel', value: currentConfig.welcome_channel ? `<#${currentConfig.welcome_channel}>` : '`Not Set`', inline: true },
-            { name: '📊 XP System', value: 'Enabled', inline: true },
+            { name: '🎀 XP System', value: 'Enabled', inline: true },
             { name: '🤖 AutoMod', value: currentConfig.automod_enabled ? 'Enabled' : 'Disabled', inline: true },
-            { name: '🎵 Music', value: 'Enabled', inline: true }
+            { name: '🎀 Music', value: 'Enabled', inline: true }
           );
         break;
 
@@ -72,7 +72,7 @@ module.exports = {
         const newPrefix = interaction.options.getString('prefix');
         if (newPrefix.length > 5) {
           return interaction.reply({ 
-            content: '❌ Prefix must be 5 characters or less!', 
+            content: '🥺 Prefix must be 5 characters or less!', 
             ephemeral: true 
           });
         }

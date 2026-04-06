@@ -26,7 +26,7 @@ module.exports = {
 
     if (!member) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ User Not Found')
+        .setTitle('🥺 User Not Found')
         .setDescription('That user isn\'t in the server or couldn\'t be found.');
 
       await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
@@ -35,7 +35,7 @@ module.exports = {
 
     if (!member.kickable) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Cannot Kick User')
+        .setTitle('🥺 Cannot Kick User')
         .setDescription('This user cannot be kicked. They may have a higher role.');
 
       await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
@@ -78,7 +78,7 @@ module.exports = {
           const modlogEmbed = createEmbed('moderation', client)
             .setTitle('👢 Kick Logged')
             .addFields(
-              { name: '👤 User', value: `${user.tag} (${user.id})`, inline: true },
+              { name: '🦋 User', value: `${user.tag} (${user.id})`, inline: true },
               { name: '👮 Moderator', value: `${interaction.user.tag}`, inline: true },
               { name: '✦ Case', value: `#${caseId}`, inline: true },
               { name: '📝 Reason', value: reason }
@@ -108,7 +108,7 @@ module.exports = {
     } catch (error) {
       console.error(error);
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Kick Failed')
+        .setTitle('🥺 Kick Failed')
         .setDescription('hmm that didn\'t work :( try again?');
 
       await interaction.reply({ embeds: [errorEmbed], ephemeral: true });

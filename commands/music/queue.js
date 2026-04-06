@@ -12,8 +12,8 @@ module.exports = {
 
     if (!queue.isPlaying && queue.songs.length === 0) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Queue Empty')
-        .setDescription('There is nothing in the queue! Use /play to add something! 🎵');
+        .setTitle('🥺 Queue Empty')
+        .setDescription('There is nothing in the queue! Use /play to add something! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
@@ -28,11 +28,11 @@ module.exports = {
       const queueEmbed = createEmbed('music', client)
         .setTitle('📜 Current Queue')
         .addFields(
-           { name: '🎶 Now Playing', value: `**[${currentSong?.title}](${currentSong?.url})** | ${currentSong?.duration || 'Unknown'}` }
+           { name: '✨ Now Playing', value: `**[${currentSong?.title}](${currentSong?.url})** | ${currentSong?.duration || 'Unknown'}` }
         );
       
       if (queueList) {
-        queueEmbed.addFields({ name: '⏭️ Up Next', value: queueList });
+        queueEmbed.addFields({ name: '✨ Up Next', value: queueList });
       } else if (queue.songs.length > 10) {
         queueEmbed.setFooter({ text: `And ${queue.songs.length - 10} more songs...` });
       }
@@ -41,7 +41,7 @@ module.exports = {
       
     } catch (error) {
        console.error('Queue error:', error);
-       await interaction.editReply({ content: '❌ Failed to fetch queue.' });
+       await interaction.editReply({ content: '🥺 Failed to fetch queue.' });
     }
   },
 };

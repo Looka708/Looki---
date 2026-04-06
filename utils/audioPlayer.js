@@ -10,7 +10,7 @@ async function playNext(guildId, client, channel) {
   if (!song) {
     queue.isPlaying = false;
     const endEmbed = createEmbed('music', client)
-      .setTitle('🎵 Queue Ended')
+      .setTitle('🎀 Queue Ended')
       .setDescription('Finished playing all songs in the queue.');
     if (channel) channel.send({ embeds: [endEmbed] });
     return;
@@ -26,23 +26,23 @@ async function playNext(guildId, client, channel) {
     // ── Build Embed ───────────
     const playEmbed = createEmbed('music', client)
       .setAuthor({ 
-        name: 'Now Playing', 
+        name: '🎀 Now Playing 🎀', 
         iconURL: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png' 
       })
       .setTitle(`${song.title}`)
       .setURL(song.url)
-      .setColor(0x3498DB) // Sleek Blue
+      .setColor(0xFFB6C1) // Pookie Pink
       .addFields(
-        { name: '👤 Artist', value: `\`${song.author || 'Unknown'}\``, inline: true },
-        { name: '⏲️ Duration', value: `\`${song.duration}\``, inline: true },
-        { name: '👥 Requested by', value: `${song.requester} 🤫`, inline: true },
-        { name: '🕒 Last Activity', value: `\`Playing: ${song.title} by ${song.requester}\``, inline: true },
-        { name: '▶️ Autoplay', value: `\`Disabled\``, inline: true },
-        { name: '📝 Lyrics', value: '```Live Lyrics is included with Pro and higher plans.```' }
+        { name: '🦋 Artist', value: `\`${song.author || 'Unknown'}\``, inline: true },
+        { name: '💖 Duration', value: `\`${song.duration}\``, inline: true },
+        { name: '🧸 Requested by', value: `${song.requester} 🥺`, inline: true },
+        { name: '✨ Last Activity', value: `\`Playing: ${song.title} by ${song.requester}\``, inline: true },
+        { name: '🌸 Autoplay', value: `\`Disabled\``, inline: true },
+        { name: '💌 Lyrics', value: '```Live Lyrics is included with Pro and higher plans.```' }
       )
       .setImage(song.thumbnail)
       .setFooter({ 
-        text: `✦ looki~ • ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`, 
+        text: `🎀 looki~ • ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`, 
         iconURL: client.user.displayAvatarURL() 
       });
 
@@ -50,16 +50,16 @@ async function playNext(guildId, client, channel) {
     const row1 = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_previous').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music_pause_resume').setEmoji('⏯️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music_skip').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music_loop').setEmoji('🔁').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('music_pause_resume').setEmoji('🌸').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_skip').setEmoji('✨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_loop').setEmoji('🦋').setStyle(ButtonStyle.Secondary)
     );
 
     const row2 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('music_clear').setEmoji('🗑️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_clear').setEmoji('🧹').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_vol_down').setEmoji('◀️').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('music_vol_up').setEmoji('▶️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_vol_up').setEmoji('🎀').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_like').setEmoji('🤍').setStyle(ButtonStyle.Secondary)
     );
 
@@ -67,7 +67,7 @@ async function playNext(guildId, client, channel) {
 
   } catch (error) {
     console.error('Lavalink Play Error:', error);
-    if (channel) channel.send('❌ There was an error playing this track. Skipping...');
+    if (channel) channel.send('🥺 There was an error playing this track. Skipping...');
     playNext(guildId, client, channel);
   }
 }

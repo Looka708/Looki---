@@ -7,7 +7,7 @@ module.exports = {
   name: 'play',
   data: new SlashCommandBuilder()
     .setName('play')
-    .setDescription('Play a song from YouTube or Spotify 🎵')
+    .setDescription('Play a song from YouTube or Spotify 🎀')
     .addStringOption(option =>
       option.setName('query')
         .setDescription('Song name, YouTube URL, or Spotify URL')
@@ -21,8 +21,8 @@ module.exports = {
     if (!voiceChannel) {
       return interaction.editReply({
         embeds: [createEmbed('error', client)
-          .setTitle('❌ Join a Voice Channel')
-          .setDescription('You must be in a voice channel to use music commands! 🎵')]
+          .setTitle('🥺 Join a Voice Channel')
+          .setDescription('You must be in a voice channel to use music commands! 🎀')]
       });
     }
 
@@ -135,23 +135,23 @@ module.exports = {
       if (result.loadType === 'playlist') {
         await interaction.editReply({
           embeds: [createEmbed('music', client)
-            .setTitle('🎶 Playlist Added')
-            .setDescription(`Added **${songsToAdd.length}** tracks to the queue.`)
-            .addFields({ name: '👤 Requester', value: interaction.user.tag })]
+            .setTitle('🎀 Playlist Added')
+            .setDescription(`Added **${songsToAdd.length}** tracks to the queue ✨.`)
+            .addFields({ name: '🧸 Requester', value: interaction.user.tag })]
         });
       } else if (queue.isPlaying && queue.songs.length > 0) {
         const embed = createEmbed('music', client)
-          .setTitle('🎵 Added to Queue')
-          .setDescription(`**[${song.title}](${song.url})**`)
+          .setTitle('💖 Added to Queue')
+          .setDescription(`**[${song.title}](${song.url})** ✨`)
           .addFields(
-            { name: '👤 Requester', value: song.requester, inline: true },
-            { name: '📍 Position', value: `#${queue.songs.length}`, inline: true }
+            { name: '🧸 Requester', value: song.requester, inline: true },
+            { name: '🎀 Position', value: `#${queue.songs.length}`, inline: true }
           );
         if (song.thumbnail) embed.setThumbnail(song.thumbnail);
         await interaction.editReply({ embeds: [embed] });
       } else {
         await interaction.editReply({
-          embeds: [createEmbed('music', client).setDescription('⏳ Loading track...')]
+          embeds: [createEmbed('music', client).setDescription('🌸 Loading track... ✨')]
         });
       }
 
@@ -163,8 +163,8 @@ module.exports = {
     } catch (error) {
       console.error('Play command error:', error);
       const embed = createEmbed('error', client)
-        .setTitle('❌ Error Playing Song')
-        .setDescription(error.message || 'Something went wrong.');
+        .setTitle('🥺 Error Playing Song')
+        .setDescription(error.message || 'Something went wrong 🦋.');
       await interaction.editReply({ embeds: [embed] });
     }
   },

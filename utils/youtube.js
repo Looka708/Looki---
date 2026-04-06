@@ -77,7 +77,7 @@ async function getYouTubeClient(forceNew = false) {
 
         console.log(cookieString 
             ? '🌸 [YouTube] Client ready with cookies'
-            : '⚠️ [YouTube] Client ready WITHOUT cookies'
+            : '🥺 [YouTube] Client ready WITHOUT cookies'
         );
     }
     return yt;
@@ -105,7 +105,7 @@ async function getRobustYouTubeStream(url) {
         const nodeStream = Readable.fromWeb(stream);
         return { stream: nodeStream, type: 'arbitrary' };
     } catch (e) {
-        console.error(`❌ [YTJS] Full error: ${e.message}`);
+        console.error(`🥺 [YTJS] Full error: ${e.message}`);
         throw e;
     }
 }

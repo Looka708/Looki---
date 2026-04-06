@@ -6,7 +6,7 @@ module.exports = {
   name: 'volume',
   data: new SlashCommandBuilder()
     .setName('volume')
-    .setDescription('Adjust the music volume (0-100) 🔊')
+    .setDescription('Adjust the music volume (0-100) ✨')
     .addIntegerOption(option =>
       option.setName('level')
         .setDescription('Volume level (0-100)')
@@ -19,8 +19,8 @@ module.exports = {
 
     if (!queue.player || !queue.isPlaying) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Nothing Playing')
-        .setDescription('There is no song playing to adjust volume! 🎵');
+        .setTitle('🥺 Nothing Playing')
+        .setDescription('There is no song playing to adjust volume! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
@@ -31,14 +31,14 @@ module.exports = {
       setVolume(interaction.guildId, level);
 
       const volEmbed = createEmbed('music', client)
-        .setTitle('🔊 Volume Adjusted')
+        .setTitle('✨ Volume Adjusted')
         .setDescription(`Volume set to **${level}%**!`);
       
       await interaction.editReply({ embeds: [volEmbed] });
       
     } catch (error) {
        console.error('Volume error:', error);
-       await interaction.editReply({ content: '❌ Failed to adjust volume.' });
+       await interaction.editReply({ content: '🥺 Failed to adjust volume.' });
     }
   },
 };

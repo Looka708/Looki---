@@ -6,14 +6,14 @@ module.exports = {
   name: 'nowplaying',
   data: new SlashCommandBuilder()
     .setName('nowplaying')
-    .setDescription('See information about the song currently playing 🎶'),
+    .setDescription('See information about the song currently playing ✨'),
   execute: async (interaction, client) => {
     const queue = getQueue(interaction.guildId);
 
     if (!queue.player || !queue.isPlaying) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Nothing Playing')
-        .setDescription('There is no song currently playing! 🎵');
+        .setTitle('🥺 Nothing Playing')
+        .setDescription('There is no song currently playing! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
@@ -30,10 +30,10 @@ module.exports = {
       const bar = '▬'.repeat(progress) + '○' + '▬'.repeat(totalParts - progress);
       
       const npEmbed = createEmbed('music', client)
-        .setTitle('🎶 Now Playing')
+        .setTitle('✨ Now Playing')
         .setDescription(`**[${song.title}](${song.url})**`)
         .addFields(
-           { name: '👤 Requester', value: song.requester, inline: true },
+           { name: '🦋 Requester', value: song.requester, inline: true },
            { name: '⏲️ Duration', value: `${new Date(position || 0).toISOString().substr(11, 8).replace(/^00:/, '')} / ${length}`, inline: true }
         );
       
@@ -44,7 +44,7 @@ module.exports = {
       
     } catch (error) {
        console.error('NowPlaying error:', error);
-       await interaction.editReply({ content: '❌ Failed to fetch track information.' });
+       await interaction.editReply({ content: '🥺 Failed to fetch track information.' });
     }
   },
 };

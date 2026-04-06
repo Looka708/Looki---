@@ -15,7 +15,7 @@ module.exports = {
 
       if (leaderboard.length === 0) {
         const emptyEmbed = createEmbed('levels', client)
-          .setTitle('📈 Leaderboard')
+          .setTitle('🎀 Leaderboard')
           .setDescription('No XP data yet. Start chatting to gain XP!');
 
         await interaction.editReply({ embeds: [emptyEmbed] });
@@ -31,7 +31,7 @@ module.exports = {
       }
 
       const embed = createEmbed('levels', client)
-        .setTitle('📈 XP Leaderboard')
+        .setTitle('🎀 XP Leaderboard')
         .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
         .setDescription(description);
 
@@ -39,7 +39,7 @@ module.exports = {
     } catch (error) {
       console.error(error);
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Error')
+        .setTitle('🥺 Error')
         .setDescription('hmm that didn\'t work :( try again?');
 
       await interaction.editReply({ embeds: [errorEmbed] });

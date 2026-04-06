@@ -57,7 +57,7 @@ module.exports = {
     } catch (error) {
       console.error('Giveaway error:', error);
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Giveaway Error')
+        .setTitle('🥺 Giveaway Error')
         .setDescription('Something went wrong with the giveaway.');
 
       await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
@@ -74,7 +74,7 @@ async function handleGiveawayStart(interaction, client) {
   const durationMs = parseDuration(durationStr);
   if (!durationMs) {
     const errorEmbed = createEmbed('error', client)
-      .setTitle('❌ Invalid Duration')
+      .setTitle('🥺 Invalid Duration')
       .setDescription('Use formats like: 1h, 30m, 2d, 1w');
 
     await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
@@ -89,10 +89,10 @@ async function handleGiveawayStart(interaction, client) {
     .setTitle('🎁 GIVEAWAY')
     .setDescription(`**Prize:** ${prize}`)
     .addFields(
-      { name: '👥 Winners', value: `${winnerCount}`, inline: true },
+      { name: '🧸 Winners', value: `${winnerCount}`, inline: true },
       { name: '⏰ Ends', value: timeString, inline: true },
       { name: '🎫 Participants', value: '0', inline: true },
-      { name: '📝 How to Enter', value: 'React with 🎉 to enter!' }
+      { name: '📝 How to Enter', value: 'React with 🦋 to enter!' }
     )
     .setFooter({ text: `Hosted by ${interaction.user.username}` });
 
@@ -100,7 +100,7 @@ async function handleGiveawayStart(interaction, client) {
   const giveawayMsg = await interaction.channel.send({ embeds: [giveawayEmbed] });
 
   // Add reaction
-  await giveawayMsg.react('🎉');
+  await giveawayMsg.react('🦋');
 
   // Create database entry
   await createGiveaway(
@@ -133,7 +133,7 @@ async function handleGiveawayEnd(interaction, client) {
 
   if (!giveaway) {
     const errorEmbed = createEmbed('error', client)
-      .setTitle('❌ Giveaway Not Found')
+      .setTitle('🥺 Giveaway Not Found')
       .setDescription('Could not find a giveaway with that message ID.');
 
     await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
@@ -142,7 +142,7 @@ async function handleGiveawayEnd(interaction, client) {
 
   if (giveaway.ended) {
     const errorEmbed = createEmbed('error', client)
-      .setTitle('❌ Already Ended')
+      .setTitle('🥺 Already Ended')
       .setDescription('This giveaway has already ended.');
 
     await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
@@ -185,7 +185,7 @@ async function finishGiveaway(client, giveaway, guildObj) {
     const message = await channel.messages.fetch(giveaway.message_id);
 
     // Get reactions
-    const reaction = message.reactions.cache.get('🎉');
+    const reaction = message.reactions.cache.get('🦋');
     const reactionUsers = await reaction?.users.fetch();
     const participants = reactionUsers
       ?.filter(user => !user.bot)
@@ -208,10 +208,10 @@ async function finishGiveaway(client, giveaway, guildObj) {
     // Create result embed
     const resultEmbed = new EmbedBuilder()
       .setColor(0xFF69B4)
-      .setTitle('🎉 Giveaway Ended!')
+      .setTitle('🦋 Giveaway Ended!')
       .setDescription(`Prize: **${giveaway.prize}**`)
       .addFields(
-        { name: '👥 Participants', value: `${reactionUsers?.size || 0}` },
+        { name: '🧸 Participants', value: `${reactionUsers?.size || 0}` },
         { name: '🏆 Winner(s)', value: winners.length > 0 ? winners.map(id => `<@${id}>`).join('\n') : 'No valid participants' }
       )
       .setTimestamp();
@@ -225,7 +225,7 @@ async function finishGiveaway(client, giveaway, guildObj) {
         const user = await client.users.fetch(winnerId);
         const dmEmbed = new EmbedBuilder()
           .setColor(0xFF69B4)
-          .setTitle('🎉 You Won a Giveaway!')
+          .setTitle('🦋 You Won a Giveaway!')
           .setDescription(`Congratulations! You won: **${giveaway.prize}**`)
           .setTimestamp();
 

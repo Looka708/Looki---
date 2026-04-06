@@ -6,12 +6,12 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Validate environment variables
 if (!SUPABASE_URL) {
-  console.error('❌ SUPABASE_URL is not set in environment variables');
+  console.error('🥺 SUPABASE_URL is not set in environment variables');
   process.exit(1);
 }
 
 if (!SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('❌ SUPABASE_SERVICE_ROLE_KEY is not set in environment variables');
+  console.error('🥺 SUPABASE_SERVICE_ROLE_KEY is not set in environment variables');
   process.exit(1);
 }
 
@@ -31,7 +31,7 @@ async function initializeTables() {
     if (error) throw error;
     console.log('✦ Supabase database tables verified');
   } catch (error) {
-    console.error('⚠️ Database verification warning:', error.message);
+    console.error('🥺 Database verification warning:', error.message);
     console.log('💡 Make sure to run supabase_schema.sql in Supabase SQL Editor');
   }
 }

@@ -19,7 +19,7 @@ module.exports = {
       .setThumbnail(client.user.displayAvatarURL({ size: 1024 }))
       .addFields(
         { name: '🏫 Servers', value: `\`${client.guilds.cache.size}\``, inline: true },
-        { name: '⏱️ Uptime', value: `\`${days}d ${hours}h ${minutes}m ${seconds}s\``, inline: true },
+        { name: '💖 Uptime', value: `\`${days}d ${hours}h ${minutes}m ${seconds}s\``, inline: true },
         { name: '🖥️ Platform', value: `\`Node.js\``, inline: true },
         { name: '🏓 Ping', value: `\`${client.ws.ping}ms\``, inline: true }
       );

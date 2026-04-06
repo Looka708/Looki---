@@ -7,14 +7,14 @@ module.exports = {
   name: 'skip',
   data: new SlashCommandBuilder()
     .setName('skip')
-    .setDescription('Skip the current song ⏭️'),
+    .setDescription('Skip the current song ✨'),
   execute: async (interaction, client) => {
     const queue = getQueue(interaction.guildId);
 
     if (!queue.player || !queue.isPlaying) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Nothing Playing')
-        .setDescription('There is no song playing to skip! 🎵');
+        .setTitle('🥺 Nothing Playing')
+        .setDescription('There is no song playing to skip! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
@@ -25,7 +25,7 @@ module.exports = {
       await queue.player.stopTrack(); // Shoukaku 'end' event will trigger playNext
 
       const skipEmbed = createEmbed('music', client)
-        .setTitle('⏭️ Skipped Song')
+        .setTitle('✨ Skipped Song')
         .setDescription(`Skipped **[${currentSong.title}](${currentSong.url})**`);
       
       await interaction.editReply({ embeds: [skipEmbed] });
@@ -33,7 +33,7 @@ module.exports = {
     } catch (error) {
       console.error('Skip command error:', error);
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Error Skipping')
+        .setTitle('🥺 Error Skipping')
         .setDescription('Something went wrong while trying to skip.');
       if (interaction.deferred) await interaction.editReply({ embeds: [errorEmbed] });
       else await interaction.reply({ embeds: [errorEmbed], ephemeral: true });

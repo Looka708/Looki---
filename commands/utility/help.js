@@ -6,15 +6,15 @@ const commandCategories = {
     title: '💕 Looki Command Hub',
     description: 'Select a category to learn more about available commands!',
     fields: [
-      { name: '🛡️ Moderation', value: 'Use `/help moderation` for moderation tools', inline: false },
-      { name: '📈 Leveling', value: 'Use `/help leveling` for leveling & rewards', inline: false },
-      { name: '🎵 Music', value: 'Use `/help music` for music playback', inline: false },
-      { name: '📊 Utility', value: 'Use `/help utility` for utility commands', inline: false },
-      { name: '🎉 Fun', value: 'Use `/help fun` for games & entertainment', inline: false },
+      { name: '🧸 Moderation', value: 'Use `/help moderation` for moderation tools', inline: false },
+      { name: '🎀 Leveling', value: 'Use `/help leveling` for leveling & rewards', inline: false },
+      { name: '🎀 Music', value: 'Use `/help music` for music playback', inline: false },
+      { name: '🎀 Utility', value: 'Use `/help utility` for utility commands', inline: false },
+      { name: '🦋 Fun', value: 'Use `/help fun` for games & entertainment', inline: false },
     ]
   },
   moderation: {
-    title: '🛡️ Moderation Commands',
+    title: '🧸 Moderation Commands',
     description: 'Tools for managing your community with care',
     fields: [
       { name: '/ban <user>', value: 'Ban a user from the server (admins only)', inline: false },
@@ -25,7 +25,7 @@ const commandCategories = {
     ]
   },
   leveling: {
-    title: '📈 Leveling & Rewards',
+    title: '🎀 Leveling & Rewards',
     description: 'Track engagement and celebrate member growth!',
     fields: [
       { name: '/rank [user]', value: 'View your or another member\'s rank card with XP & level', inline: false },
@@ -34,7 +34,7 @@ const commandCategories = {
     ]
   },
   music: {
-    title: '🎵 Music Commands',
+    title: '🎀 Music Commands',
     description: 'Stream music and build the perfect playlist',
     fields: [
       { name: '/play <query>', value: 'Play a song from YouTube or Spotify', inline: false },
@@ -44,7 +44,7 @@ const commandCategories = {
     ]
   },
   utility: {
-    title: '📊 Utility Commands',
+    title: '🎀 Utility Commands',
     description: 'Essential server tools and information',
     fields: [
       { name: '/ping', value: 'Check bot latency and API response time', inline: false },
@@ -55,7 +55,7 @@ const commandCategories = {
     ]
   },
   fun: {
-    title: '🎉 Fun & Games',
+    title: '🦋 Fun & Games',
     description: 'Entertainment and engagement commands',
     fields: [
       { name: '/8ball <question>', value: 'Ask the magic 8 ball a yes/no question', inline: false },
@@ -75,11 +75,11 @@ module.exports = {
         .setRequired(false)
         .addChoices(
           { name: '📋 General', value: 'general' },
-          { name: '🛡️ Moderation', value: 'moderation' },
-          { name: '📈 Leveling', value: 'leveling' },
-          { name: '🎵 Music', value: 'music' },
-          { name: '📊 Utility', value: 'utility' },
-          { name: '🎉 Fun', value: 'fun' }
+          { name: '🧸 Moderation', value: 'moderation' },
+          { name: '🎀 Leveling', value: 'leveling' },
+          { name: '🎀 Music', value: 'music' },
+          { name: '🎀 Utility', value: 'utility' },
+          { name: '🦋 Fun', value: 'fun' }
         )
     ),
   execute: async (interaction, client) => {

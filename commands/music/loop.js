@@ -6,7 +6,7 @@ module.exports = {
   name: 'loop',
   data: new SlashCommandBuilder()
     .setName('loop')
-    .setDescription('🔁 Toggle between track loop, queue loop, and off')
+    .setDescription('🦋 Toggle between track loop, queue loop, and off')
     .addStringOption(option => 
       option.setName('mode')
         .setDescription('The loop mode')
@@ -22,8 +22,8 @@ module.exports = {
 
     if (!voiceChannel) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Join a Voice Channel')
-        .setDescription('You must be in a voice channel to change loop settings! 🎵');
+        .setTitle('🥺 Join a Voice Channel')
+        .setDescription('You must be in a voice channel to change loop settings! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
@@ -40,10 +40,10 @@ module.exports = {
 
     let modeText = 'Off';
     if (mode === 'one') modeText = 'Current Track 🔂';
-    if (mode === 'all') modeText = 'Entire Queue 🔁';
+    if (mode === 'all') modeText = 'Entire Queue 🦋';
 
     const embed = createEmbed('music', client)
-      .setTitle('🔁 Loop Updated')
+      .setTitle('🦋 Loop Updated')
       .setDescription(`Loop mode has been set to: **${modeText}**\ndone bestie ✦`);
 
     await interaction.reply({ embeds: [embed] });

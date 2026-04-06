@@ -35,10 +35,10 @@ module.exports = {
       // Build badges
       const badges = [];
       if (user.bot) badges.push('🤖 Bot');
-      if (member.permissions.has('Administrator')) badges.push('⚙️ Admin');
-      if (member.permissions.has('ManageGuild')) badges.push('🛡️ Manager');
+      if (member.permissions.has('Administrator')) badges.push('✨ Admin');
+      if (member.permissions.has('ManageGuild')) badges.push('🧸 Manager');
       if (member.permissions.has('ModerateMembers')) badges.push('🔨 Moderator');
-      if (badges.length === 0) badges.push('👤 Member');
+      if (badges.length === 0) badges.push('🦋 Member');
 
       // Count mod actions by type
       const banCount = warningsList.filter(w => w.type === 'ban').length;
@@ -47,22 +47,22 @@ module.exports = {
       const warnCount = warningsList.filter(w => w.type === 'warn').length;
 
       const embed = createEmbed('info', client)
-        .setTitle(`👤 ${user.username}'s Profile`)
+        .setTitle(`🦋 ${user.username}'s Profile`)
         .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
         .addFields(
           { name: '🎀 Discord Tag', value: `${user.tag}`, inline: true },
           { name: '🆔 User ID', value: `\`${user.id}\``, inline: true },
-          { name: '⭐ Status', value: member.presence?.status ? member.presence.status.toUpperCase() : 'OFFLINE', inline: true },
+          { name: '✨ Status', value: member.presence?.status ? member.presence.status.toUpperCase() : 'OFFLINE', inline: true },
           { name: '📅 Account Created', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true },
           { name: '💕 Joined Server', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: true },
           { name: '🔰 Badges', value: badges.join(' • '), inline: true },
           { 
-            name: '⭐ Profile Stats', 
+            name: '✨ Profile Stats', 
             value: `**Level:** ${xpData?.level || 0}\n**XP:** ${xpData?.xp?.toLocaleString() || 0}`, 
             inline: true 
           },
           { 
-            name: '⚠️ Mod Actions', 
+            name: '🥺 Mod Actions', 
             value: `**Bans:** ${banCount}\n**Kicks:** ${kickCount}\n**Mutes:** ${muteCount}\n**Warns:** ${warnCount}`, 
             inline: true 
           },

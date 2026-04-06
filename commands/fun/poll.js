@@ -42,7 +42,7 @@ module.exports = {
     });
 
     const embed = createEmbed('fun', client)
-      .setTitle('📊 Poll')
+      .setTitle('🎀 Poll')
       .setDescription(description);
 
     const msg = await interaction.reply({ embeds: [embed], fetchReply: true });

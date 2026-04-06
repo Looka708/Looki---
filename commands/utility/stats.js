@@ -41,11 +41,11 @@ module.exports = {
         guild.channels.cache.get(config.modlog_channel)?.name || 'Deleted' : 'Not Set';
 
       const embed = createEmbed('info', client)
-        .setTitle(`📊 ${guild.name} Statistics`)
+        .setTitle(`🎀 ${guild.name} Statistics`)
         .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
         .addFields(
           { 
-            name: '👥 Members', 
+            name: '🧸 Members', 
             value: `**Total:** ${members.size}\n**Humans:** ${humans}\n**Bots:** ${bots}\n**Online:** ${onlineCount}`, 
             inline: true 
           },
@@ -70,12 +70,12 @@ module.exports = {
             inline: true 
           },
           { 
-            name: '⚙️ Configuration', 
+            name: '✨ Configuration', 
             value: `**Modlog:** ${modlogChannel}\n**Members Tracked:** ${leaderboard.length}`, 
             inline: true 
           },
           { 
-            name: '⭐ Top Member', 
+            name: '✨ Top Member', 
             value: topMember ? `<@${topMember.user_id}> - Level ${topMember.level} (${topMember.xp.toLocaleString()} XP)` : 'No data yet', 
             inline: false 
           },

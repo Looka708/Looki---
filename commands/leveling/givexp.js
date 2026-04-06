@@ -6,7 +6,7 @@ module.exports = {
   name: 'givexp',
   data: new SlashCommandBuilder()
     .setName('givexp')
-    .setDescription('📈 Give XP to a user')
+    .setDescription('🎀 Give XP to a user')
     .addUserOption(option =>
       option.setName('user')
         .setDescription('The user to give XP to')
@@ -28,7 +28,7 @@ module.exports = {
       const data = await addXP(interaction.guild.id, user.id, amount);
 
       const embed = createEmbed('success', client)
-        .setTitle('📈 XP Granted')
+        .setTitle('🎀 XP Granted')
         .setDescription(`Gave **${amount} XP** to ${user}! 🌸`)
         .addFields(
           { name: '✨ New Total', value: `\`${data.xp} XP\` (Level ${data.level})`, inline: true }

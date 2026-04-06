@@ -20,14 +20,14 @@ module.exports = {
       await updateConfig(interaction.guild.id, { modlog_channel: channel.id });
 
       const embed = createEmbed('success', client)
-        .setTitle('✅ Modlog Channel Set')
+        .setTitle('💖 Modlog Channel Set')
         .setDescription(`Moderation logs will now post to ${channel}`);
 
       await interaction.reply({ embeds: [embed] });
     } catch (error) {
       console.error(error);
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Error')
+        .setTitle('🥺 Error')
         .setDescription('hmm that didn\'t work :( try again?');
 
       await interaction.reply({ embeds: [errorEmbed], ephemeral: true });

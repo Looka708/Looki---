@@ -40,7 +40,7 @@ module.exports = {
           .setTitle('🔨 you\'ve been temporarily banned')
           .setDescription(`you were banned from \`${interaction.guild.name}\` 🎀`)
           .addFields(
-            { name: '⏱️ Duration', value: `\`${durationInput}\``, inline: true },
+            { name: '💖 Duration', value: `\`${durationInput}\``, inline: true },
             { name: '✦ Reason', value: reason, inline: true }
           );
         await targetUser.send({ embeds: [dmEmbed] });

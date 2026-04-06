@@ -53,7 +53,7 @@ module.exports = {
     } catch (error) {
       console.error(error);
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ oopsie')
+        .setTitle('🥺 oopsie')
         .setDescription('hmm that didn\'t work :( try again? maybe messages are too old (14+ days) 🎀');
 
       await interaction.reply({ embeds: [errorEmbed], ephemeral: true });

@@ -36,7 +36,7 @@ module.exports = {
       );
 
       const warnEmbed = createEmbed('moderation', client)
-        .setTitle('⚠️ Warning Issued')
+        .setTitle('🥺 Warning Issued')
         .setDescription(`${user.tag} has been warned`)
         .addFields(
           { name: '🎀 User', value: `<@${user.id}>`, inline: true },
@@ -50,7 +50,7 @@ module.exports = {
       // Try to DM user
       try {
         const dmEmbed = createEmbed('moderation', client)
-          .setTitle('⚠️ You\'ve been warned')
+          .setTitle('🥺 You\'ve been warned')
           .setDescription(`You received a warning in \`${interaction.guild.name}\``)
           .addFields(
             { name: '🎀 Reason', value: reason },
@@ -64,7 +64,7 @@ module.exports = {
     } catch (error) {
       console.error(error);
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ Warning Failed')
+        .setTitle('🥺 Warning Failed')
         .setDescription('hmm that didn\'t work :( try again?');
 
       await interaction.reply({ embeds: [errorEmbed], ephemeral: true });

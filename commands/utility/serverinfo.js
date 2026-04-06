@@ -13,15 +13,15 @@ module.exports = {
     const voiceChannels = channels.filter(ch => ch.type === ChannelType.GuildVoice).size;
 
     const embed = createEmbed('info', client)
-      .setTitle('📊 Server Information')
+      .setTitle('🎀 Server Information')
       .setThumbnail(guild.iconURL({ dynamic: true }))
       .addFields(
         { name: '🎀 Server Name', value: guild.name, inline: true },
         { name: '✦ Server ID', value: `\`${guild.id}\``, inline: true },
-        { name: '👥 Members', value: `\`${guild.memberCount}\``, inline: true },
+        { name: '🧸 Members', value: `\`${guild.memberCount}\``, inline: true },
         { name: '💬 Text Channels', value: `\`${textChannels}\``, inline: true },
-        { name: '🔊 Voice Channels', value: `\`${voiceChannels}\``, inline: true },
-        { name: '⭐ Roles', value: `\`${guild.roles.cache.size}\``, inline: true },
+        { name: '✨ Voice Channels', value: `\`${voiceChannels}\``, inline: true },
+        { name: '✨ Roles', value: `\`${guild.roles.cache.size}\``, inline: true },
         { name: '📅 Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:D>`, inline: true },
         { name: '👻 Owner', value: `<@${guild.ownerId}>`, inline: true }
       );

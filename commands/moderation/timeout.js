@@ -31,7 +31,7 @@ module.exports = {
     const durationMs = parseDuration(durationInput);
     if (!durationMs || durationMs < 1000 || durationMs > 28 * 24 * 60 * 60 * 1000) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('❌ invalid duration')
+        .setTitle('🥺 invalid duration')
         .setDescription('duration must be between 1s and 28d 🎀. try `10m` or `1h`!');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
@@ -73,7 +73,7 @@ module.exports = {
           .setTitle('🕐 you\'ve been put in time-out')
           .setDescription(`you were muted in \`${interaction.guild.name}\` 🎀`)
           .addFields(
-            { name: '⏱️ Duration', value: `\`${durationInput}\``, inline: true },
+            { name: '💖 Duration', value: `\`${durationInput}\``, inline: true },
             { name: '✦ Reason', value: reason, inline: true }
           );
         await targetUser.send({ embeds: [dmEmbed] });
