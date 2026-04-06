@@ -1,8 +1,22 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, Collection, PermissionFlagsBits } = require('discord.js');
+
+const interactionCooldowns = new Collection();
 
 module.exports = {
   name: 'interactionCreate',
   execute: async (interaction, client) => {
+    // -- Global Rate Limiting Cooldown --
+    const cooldownAmount = 3000; // 3 seconds
+    if (interactionCooldowns.has(interaction.user.id)) {
+      const expirationTime = interactionCooldowns.get(interaction.user.id) + cooldownAmount;
+      if (Date.now() < expirationTime) {
+        const timeLeft = (expirationTime - Date.now()) / 1000;
+        return interaction.reply({ content: `🥺 Please wait ${timeLeft.toFixed(1)} more second(s) before putting another command!`, ephemeral: true }).catch(() => {});
+      }
+    }
+    interactionCooldowns.set(interaction.user.id, Date.now());
+    setTimeout(() => interactionCooldowns.delete(interaction.user.id), cooldownAmount);
+
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
@@ -49,7 +63,22 @@ async function handleMusicButtons(interaction, client) {
   }
 
   if (!voiceChannel || voiceChannel.id !== queue.player.channelId) {
-    return interaction.reply({ content: '❌ You must be in the same voice channel as Looki!', ephemeral: true });
+    return interaction.reply({ content: '🥺 You must be in the same voice channel as Looki!', ephemeral: true });
+  }
+
+  // ── Authorization Check for Destructive Controls ───────────
+  const destructiveActions = ['music_skip', 'music_stop', 'music_clear', 'music_shuffle', 'music_previous'];
+  if (destructiveActions.includes(interaction.customId)) {
+    const isAlone = voiceChannel.members.filter(m => !m.user.bot).size === 1;
+    const isMod = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
+    const isRequester = queue.currentSong.requester === interaction.user.tag;
+
+    if (!isAlone && !isMod && !isRequester) {
+      return interaction.reply({ 
+        content: '🥺 You must be a Moderator, alone, or the **Requester** of this song to do that!', 
+        ephemeral: true 
+      });
+    }
   }
 
   try {

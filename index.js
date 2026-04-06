@@ -13,10 +13,33 @@ const { initializeTables } = require('./utils/supabase');
 
 // 🌸 Lavalink Configuration (Public Nodes) ───────────
 const Nodes = [
-  { name: 'Jirayu', url: 'lavalink.jirayu.net:13592', auth: 'youshallnotpass', secure: false },
-  { name: 'Serenetia', url: 'lavalinkv4.serenetia.com:80', auth: 'https://dsc.gg/ajidevserver', secure: false },
-  { name: 'SerenetiaSSL', url: 'lavalinkv4.serenetia.com:443', auth: 'https://dsc.gg/ajidevserver', secure: true }
+  { 
+    name: 'Jirayu', 
+    url: process.env.LAVALINK_JIRAYU_URL || 'lavalink.jirayu.net:13592', 
+    auth: process.env.LAVALINK_JIRAYU_PWD || 'youshallnotpass', 
+    secure: process.env.LAVALINK_JIRAYU_SECURE === 'true' || false 
+  },
+  { 
+    name: 'Serenetia', 
+    url: process.env.LAVALINK_SERENETIA_URL || 'lavalinkv4.serenetia.com:80', 
+    auth: process.env.LAVALINK_SERENETIA_PWD || 'https://dsc.gg/ajidevserver', 
+    secure: process.env.LAVALINK_SERENETIA_SECURE === 'true' || false 
+  },
+  { 
+    name: 'SerenetiaSSL', 
+    url: process.env.LAVALINK_SERENETIASSL_URL || 'lavalinkv4.serenetia.com:443', 
+    auth: process.env.LAVALINK_SERENETIASSL_PWD || 'https://dsc.gg/ajidevserver', 
+    secure: process.env.LAVALINK_SERENETIASSL_SECURE === 'true' || true 
+  }
 ];
+
+// ── Global Error Handling to Prevent Crashes ───────────
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🥺 [Anti-Crash] Unhandled Rejection:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('🥺 [Anti-Crash] Uncaught Exception:', err);
+});
 
 // ── Heartbeat Server (Prevents Koyeb from sleeping) ───────────
 const server = http.createServer((req, res) => {

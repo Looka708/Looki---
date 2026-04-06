@@ -1,6 +1,10 @@
 const { addXP, getOrCreateXP } = require('../models/XP');
 const { getOrCreateConfig } = require('../models/ServerConfig');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, Collection } = require('discord.js');
+
+// Global command cooldowns
+const commandCooldowns = new Collection();
+
 const {
   hasProfanity,
   checkSpam,
@@ -49,6 +53,20 @@ async function handlePrefixCommand(message, client, prefix) {
   const command = client.prefixCommands.get(commandName);
   if (!command) return;
 
+  // -- Global Rate Limiting Cooldown --
+  const cooldownAmount = 3000; // 3 seconds
+  if (commandCooldowns.has(message.author.id)) {
+    const expirationTime = commandCooldowns.get(message.author.id) + cooldownAmount;
+    if (Date.now() < expirationTime) {
+      const timeLeft = (expirationTime - Date.now()) / 1000;
+      return message.reply({ content: `🥺 Please wait ${timeLeft.toFixed(1)} more second(s) before putting another command!` })
+        .then(msg => setTimeout(() => msg.delete().catch(() => {}), 3000))
+        .catch(() => {});
+    }
+  }
+  commandCooldowns.set(message.author.id, Date.now());
+  setTimeout(() => commandCooldowns.delete(message.author.id), cooldownAmount);
+
   // 🌸 Interaction Proxy (Mimics SlashCommandInteraction) ───────────
   // This allows the same command.execute() to work for both Slash and Prefix!
   const interactionProxy = {
@@ -96,8 +114,7 @@ async function handlePrefixCommand(message, client, prefix) {
     // Proxy for options
     options: {
       getString: (name) => {
-        // Simple heuristic: if the command expects 'query', return the full args
-        // For more complex usage, we'd need to parse data properties
+        if (!args.length) return null;
         return args.join(' ');
       },
       getUser: (name) => {
