@@ -102,8 +102,14 @@ module.exports = {
       const queue = getQueue(interaction.guildId);
 
       if (!queue.player) {
-        // 🌸 Check if Shoukaku actually has an internal player (Recovery)
-        const existingPlayer = client.shoukaku.players.get(interaction.guildId);
+        let existingPlayer = client.shoukaku.players.get(interaction.guildId);
+
+        // 🌸 If player exists but isn't strictly connected, fully leave to prevent ghost state
+        if (existingPlayer && existingPlayer.connection.state !== 1) {
+          await client.shoukaku.leaveVoiceChannel(interaction.guildId);
+          existingPlayer = null;
+          await new Promise(r => setTimeout(r, 500));
+        }
 
         if (existingPlayer) {
           queue.player = existingPlayer;
@@ -111,11 +117,11 @@ module.exports = {
           console.log(`🌸 [Lavalink] Re-attached to existing player for guild ${interaction.guildId}`);
         } else {
           try {
-            await new Promise(r => setTimeout(r, 300)); // wait for voice state
             const player = await client.shoukaku.joinVoiceChannel({
               guildId: interaction.guildId,
               channelId: voiceChannel.id,
               shardId: interaction.guild.shardId ?? 0,
+              deaf: true // Important for keeping connection stable & saving bandwidth
             });
 
             queue.player = player;
@@ -123,6 +129,7 @@ module.exports = {
 
           } catch (err) {
             console.error('Lavalink Connection Error:', err);
+            await client.shoukaku.leaveVoiceChannel(interaction.guildId);
             throw new Error('Failed to connect to the voice channel. Please try again.');
           }
         }

@@ -12,7 +12,7 @@ module.exports = {
       await interaction.deferReply();
       
       const guildId = interaction.guildId;
-      deleteQueue(guildId); // This will destroy the Shoukaku player too
+      deleteQueue(guildId, client); // This will cleanly destroy the Shoukaku player too
 
       const stopEmbed = createEmbed('music', client)
         .setTitle('⏹️ Stopped Playing')

@@ -1,6 +1,7 @@
 const { getQueue, getNextSong, setPlaying, toggleRepeat } = require('./musicManager');
 const { createEmbed } = require('./embedBuilder');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { CATEGORY_GIFS } = require('./embedBuilder');
 
 async function playNext(guildId, client, channel) {
   const queue = getQueue(guildId);
@@ -33,14 +34,12 @@ async function playNext(guildId, client, channel) {
       .setURL(song.url)
       .setColor(0xFFB6C1) // Pookie Pink
       .addFields(
-        { name: '🦋 Artist', value: `\`${song.author || 'Unknown'}\``, inline: true },
-        { name: '💖 Duration', value: `\`${song.duration}\``, inline: true },
-        { name: '🧸 Requested by', value: `${song.requester} 🥺`, inline: true },
-        { name: '✨ Last Activity', value: `\`Playing: ${song.title} by ${song.requester}\``, inline: true },
-        { name: '🌸 Autoplay', value: `\`Disabled\``, inline: true },
-        { name: '💌 Lyrics', value: '```Live Lyrics is included with Pro and higher plans.```' }
+        { name: '🦋 Artist', value: `> **${song.author || 'Unknown'}**`, inline: true },
+        { name: '💖 Duration', value: `> **${song.duration}**`, inline: true },
+        { name: '🧸 Requested by', value: `> **${song.requester}**`, inline: true }
       )
       .setImage(song.thumbnail)
+      .setThumbnail(CATEGORY_GIFS?.music || 'https://cdn.discordapp.com/attachments/1110915631720370216/1110915721839185970/Looki_Default.gif')
       .setFooter({ 
         text: `🎀 looki~ • ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`, 
         iconURL: client.user.displayAvatarURL() 

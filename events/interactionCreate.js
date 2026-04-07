@@ -50,7 +50,7 @@ module.exports = {
 };
 
 async function handleMusicButtons(interaction, client) {
-  const { getQueue, toggleRepeat, clearQueue, shuffleQueue, getPreviousSong, setVolume } = require('../utils/musicManager');
+  const { getQueue, toggleRepeat, clearQueue, shuffleQueue, getPreviousSong, setVolume, deleteQueue } = require('../utils/musicManager');
   const { playNext } = require('../utils/audioPlayer');
   const { createEmbed } = require('../utils/embedBuilder');
   
@@ -114,8 +114,7 @@ async function handleMusicButtons(interaction, client) {
         break;
 
       case 'music_stop':
-        clearQueue(interaction.guildId);
-        if (queue.player) queue.player.destroy();
+        deleteQueue(interaction.guildId, client);
         await interaction.reply({ content: `⏹️ Stopped and disconnected by ${interaction.user}` });
         break;
 
