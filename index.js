@@ -12,6 +12,7 @@ const { YouTubePlugin } = require('@distube/youtube');
 const { SpotifyPlugin } = require('@distube/spotify');
 const { SoundCloudPlugin } = require('@distube/soundcloud');
 const { Client, Collection, GatewayIntentBits, PermissionFlagsBits } = require('discord.js');
+const ffmpeg = require('ffmpeg-static');
 const { initializeTables } = require('./utils/supabase');
 const { handleDistubeEvents } = require('./utils/audioPlayer');
 
@@ -58,6 +59,9 @@ const client = new Client({
 
 // 🌸 DisTube Initialization
 client.distube = new DisTube(client, {
+    ffmpeg: {
+        path: ffmpeg
+    },
     emitNewSongOnly: true,
     plugins: [
         new YouTubePlugin(),
