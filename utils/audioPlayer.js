@@ -63,11 +63,12 @@ function handleDistubeEvents(client) {
     .on('error', (channel, e) => {
       console.error('DisTube Error:', e);
       if (channel) {
+        const errorMessage = e?.message || e?.toString() || 'Something went wrong while playing! 🦋';
         channel.send({
           embeds: [createEmbed('error', client)
             .setTitle('🥺 Music Error')
-            .setDescription(`An error occurred: ${e.message.slice(0, 2000)}`)]
-        });
+            .setDescription(`An error occurred: ${errorMessage.slice(0, 2000)}`)]
+        }).catch(() => {});
       }
     })
     .on('empty', queue => {
