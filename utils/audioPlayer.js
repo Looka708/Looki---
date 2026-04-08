@@ -60,14 +60,15 @@ function handleDistubeEvents(client) {
         .addFields({ name: '🧸 Requester', value: playlist.user.tag });
       queue.textChannel?.send({ embeds: [embed] });
     })
-    .on('error', (channel, e) => {
-      console.error('DisTube Error:', e);
-      if (channel) {
-        const errorMessage = e?.message || e?.toString() || 'Something went wrong while playing! 🦋';
+    .on('error', (error, queue, song) => {
+      console.error('DisTube Error Details:', error);
+      const channel = queue?.textChannel;
+      if (channel && typeof channel.send === 'function') {
+        const errorMessage = error?.message || error?.toString() || 'An unknown error occurred during playback! 🦋';
         channel.send({
           embeds: [createEmbed('error', client)
             .setTitle('🥺 Music Error')
-            .setDescription(`An error occurred: ${errorMessage.slice(0, 2000)}`)]
+            .setDescription(`**Error:** ${errorMessage.slice(0, 1000)}\n**Track:** ${song ? song.name : 'Unknown'}`)]
         }).catch(() => {});
       }
     })
