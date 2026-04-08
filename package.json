@@ -12,6 +12,8 @@
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
     "@discordjs/voice": "^0.19.2",
+    "@emnapi/core": "^1.9.2",
+    "@emnapi/runtime": "^1.9.2",
     "@supabase/supabase-js": "^2.38.4",
     "axios": "^1.6.2",
     "discord.js": "^14.14.1",
