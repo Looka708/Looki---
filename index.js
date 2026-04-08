@@ -59,8 +59,6 @@ const client = new Client({
 // 🌸 DisTube Initialization
 client.distube = new DisTube(client, {
     emitNewSongOnly: true,
-    emitAddSongReplay: false,
-    emitAddListReplay: false,
     plugins: [
         new YouTubePlugin(),
         new SpotifyPlugin(),
