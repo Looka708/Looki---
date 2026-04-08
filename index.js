@@ -11,25 +11,24 @@ const { Shoukaku, Connectors } = require('shoukaku');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { initializeTables } = require('./utils/supabase');
 
-// 🌸 Lavalink Configuration (Public Nodes) ───────────
 const Nodes = [
   { 
     name: 'Jirayu', 
-    url: process.env.LAVALINK_JIRAYU_URL || 'localhost:2333', 
+    url: process.env.LAVALINK_JIRAYU_URL || 'lavalink.jirayu.net:13592', 
     auth: process.env.LAVALINK_JIRAYU_PWD || 'youshallnotpass', 
-    secure: process.env.LAVALINK_JIRAYU_SECURE === 'true' 
+    secure: process.env.LAVALINK_JIRAYU_SECURE === 'true' ? true : false 
   },
   { 
     name: 'Serenetia', 
-    url: process.env.LAVALINK_SERENETIA_URL || 'localhost:2334', 
-    auth: process.env.LAVALINK_SERENETIA_PWD || 'youshallnotpass', 
-    secure: process.env.LAVALINK_SERENETIA_SECURE === 'true' 
+    url: process.env.LAVALINK_SERENETIA_URL || 'lavalinkv4.serenetia.com:80', 
+    auth: process.env.LAVALINK_SERENETIA_PWD || 'https://dsc.gg/ajidevserver', 
+    secure: process.env.LAVALINK_SERENETIA_SECURE === 'true' ? true : false 
   },
   { 
     name: 'SerenetiaSSL', 
-    url: process.env.LAVALINK_SERENETIASSL_URL || 'localhost:2335', 
-    auth: process.env.LAVALINK_SERENETIASSL_PWD || 'youshallnotpass', 
-    secure: process.env.LAVALINK_SERENETIASSL_SECURE === 'true' 
+    url: process.env.LAVALINK_SERENETIASSL_URL || 'lavalinkv4.serenetia.com:443', 
+    auth: process.env.LAVALINK_SERENETIASSL_PWD || 'https://dsc.gg/ajidevserver', 
+    secure: process.env.LAVALINK_SERENETIASSL_SECURE === 'false' ? false : true 
   }
 ];
 
