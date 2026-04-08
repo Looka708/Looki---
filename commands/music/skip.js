@@ -1,7 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
-const { getQueue } = require('../../utils/musicManager');
-const { playNext } = require('../../utils/audioPlayer');
 
 module.exports = {
   name: 'skip',
@@ -9,9 +7,9 @@ module.exports = {
     .setName('skip')
     .setDescription('Skip the current song ✨'),
   execute: async (interaction, client) => {
-    const queue = getQueue(interaction.guildId);
+    const queue = client.distube.getQueue(interaction.guildId);
 
-    if (!queue.player || !queue.isPlaying) {
+    if (!queue || !queue.songs[0]) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('There is no song playing to skip! 🎀');
@@ -21,12 +19,18 @@ module.exports = {
     try {
       await interaction.deferReply();
       
-      const currentSong = queue.currentSong;
-      await queue.player.stopTrack(); // Shoukaku 'end' event will trigger playNext
+      const currentSong = queue.songs[0];
+      
+      // If last song and not looping, stop. Otherwise skip.
+      if (queue.songs.length <= 1 && queue.repeatMode === 0) {
+          await queue.stop();
+      } else {
+          await queue.skip();
+      }
 
       const skipEmbed = createEmbed('music', client)
         .setTitle('✨ Skipped Song')
-        .setDescription(`Skipped **[${currentSong.title}](${currentSong.url})**`);
+        .setDescription(`Skipped **[${currentSong.name}](${currentSong.url})**`);
       
       await interaction.editReply({ embeds: [skipEmbed] });
       

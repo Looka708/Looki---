@@ -1,47 +1,37 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
-const { getQueue } = require('../../utils/musicManager');
 
 module.exports = {
   name: 'queue',
   data: new SlashCommandBuilder()
     .setName('queue')
-    .setDescription('See the current song queue 📜'),
+    .setDescription('See the upcoming songs 📜'),
   execute: async (interaction, client) => {
-    const queue = getQueue(interaction.guildId);
+    const queue = client.distube.getQueue(interaction.guildId);
 
-    if (!queue.isPlaying && queue.songs.length === 0) {
+    if (!queue) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('🥺 Queue Empty')
-        .setDescription('There is nothing in the queue! Use /play to add something! 🎀');
+        .setTitle('🥺 Nothing Playing')
+        .setDescription('No music is currently playing! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
     try {
-      await interaction.deferReply();
-      
-      const currentSong = queue.currentSong;
-      const nextSongs = queue.songs.slice(0, 10);
-      
-      const queueList = nextSongs.map((song, i) => `${i + 1}. **[${song.title}](${song.url})** | ${song.duration}`).join('\n');
-      
-      const queueEmbed = createEmbed('music', client)
-        .setTitle('📜 Current Queue')
-        .addFields(
-           { name: '✨ Now Playing', value: `**[${currentSong?.title}](${currentSong?.url})** | ${currentSong?.duration || 'Unknown'}` }
-        );
-      
-      if (queueList) {
-        queueEmbed.addFields({ name: '✨ Up Next', value: queueList });
-      } else if (queue.songs.length > 10) {
-        queueEmbed.setFooter({ text: `And ${queue.songs.length - 10} more songs...` });
-      }
+      const q = queue.songs
+        .slice(0, 10)
+        .map((song, i) => `${i === 0 ? '▶️' : `**${i}.**`} [${song.name}](${song.url}) - \`${song.formattedDuration}\``)
+        .join('\n');
 
-      await interaction.editReply({ embeds: [queueEmbed] });
+      const embed = createEmbed('music', client)
+        .setTitle('📜 Current Queue')
+        .setDescription(q || 'No more songs in queue!')
+        .setFooter({ text: `Tracks: ${queue.songs.length} | Duration: ${queue.formattedDuration}` });
+
+      await interaction.reply({ embeds: [embed] });
       
     } catch (error) {
-       console.error('Queue error:', error);
-       await interaction.editReply({ content: '🥺 Failed to fetch queue.' });
+      console.error('Queue error:', error);
+      await interaction.reply({ content: '❌ Error fetching queue.', ephemeral: true });
     }
   },
 };

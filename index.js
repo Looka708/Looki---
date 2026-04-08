@@ -5,32 +5,13 @@ const http = require('http');
 const axios = require('axios');
 
 // 🌸 Environment Debugging ───────────
-console.log('🌸 [System] Initializing Looki with Shoukaku Lavalink support...');
+console.log('🌸 [System] Initializing Looki with DisTube Local Audio...');
 
-const { Shoukaku, Connectors } = require('shoukaku');
+const { DisTube } = require('distube');
+const { PlayDlExtractor } = require('@distube/play-dl');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { initializeTables } = require('./utils/supabase');
-
-const Nodes = [
-  { 
-    name: 'Jirayu', 
-    url: process.env.LAVALINK_JIRAYU_URL || 'lavalink.jirayu.net:13592', 
-    auth: process.env.LAVALINK_JIRAYU_PWD || 'youshallnotpass', 
-    secure: process.env.LAVALINK_JIRAYU_SECURE === 'true' ? true : false 
-  },
-  { 
-    name: 'Serenetia', 
-    url: process.env.LAVALINK_SERENETIA_URL || 'lavalinkv4.serenetia.com:80', 
-    auth: process.env.LAVALINK_SERENETIA_PWD || 'https://dsc.gg/ajidevserver', 
-    secure: process.env.LAVALINK_SERENETIA_SECURE === 'true' ? true : false 
-  },
-  { 
-    name: 'SerenetiaSSL', 
-    url: process.env.LAVALINK_SERENETIASSL_URL || 'lavalinkv4.serenetia.com:443', 
-    auth: process.env.LAVALINK_SERENETIASSL_PWD || 'https://dsc.gg/ajidevserver', 
-    secure: process.env.LAVALINK_SERENETIASSL_SECURE === 'false' ? false : true 
-  }
-];
+const { handleDistubeEvents } = require('./utils/audioPlayer');
 
 // ── Global Error Handling to Prevent Crashes ───────────
 process.on('unhandledRejection', (reason, promise) => {
@@ -67,30 +48,23 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildBans,
-    GatewayIntentBits.GuildEmojisAndStickers,
-    GatewayIntentBits.GuildIntegrations,
-    GatewayIntentBits.GuildWebhooks,
-    GatewayIntentBits.GuildInvites,
     GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent,
   ],
 });
 
-// 🌸 Shoukaku Initialization — MUST happen after Client
-const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), Nodes, {
-    moveOnDisconnect: false,
-    resumable: false,
-    resumableTimeout: 30,
-    reconnectTries: 3,
-    restTimeout: 10000,
+// 🌸 DisTube Initialization
+client.distube = new DisTube(client, {
+    emitNewSongOnly: true,
+    emitAddSongReplay: false,
+    emitAddListReplay: false,
+    plugins: [new PlayDlExtractor()]
 });
-shoukaku.on('ready', (name) => console.log(`🌸 [Lavalink] Node ${name} is ready!`));
-shoukaku.on('error', (name, error) => console.error(`❌ [Lavalink] Node ${name} error:`, error));
-client.shoukaku = shoukaku;
+
+// Initialize DisTube Events (handled in audioPlayer.js)
+handleDistubeEvents(client);
+
 
 // Initialize command collection
 client.commands = new Collection();

@@ -32,7 +32,6 @@ module.exports = {
           .setDescription('hmm that didn\'t work :( try again?')
           .setTimestamp();
 
-        // Check if interaction was already deferred/replied to avoid "Interaction already acknowledged" error
         if (interaction.deferred || interaction.replied) {
           await interaction.editReply({ embeds: [embed] }).catch(() => {});
         } else {
@@ -43,35 +42,29 @@ module.exports = {
       if (interaction.customId.startsWith('music_')) {
         await handleMusicButtons(interaction, client);
       }
-    } else if (interaction.isStringSelectMenu()) {
-      // Handle select menu interactions here
     }
   },
 };
 
 async function handleMusicButtons(interaction, client) {
-  const { getQueue, toggleRepeat, clearQueue, shuffleQueue, getPreviousSong, setVolume, deleteQueue } = require('../utils/musicManager');
-  const { playNext } = require('../utils/audioPlayer');
   const { createEmbed } = require('../utils/embedBuilder');
   
-  const queue = getQueue(interaction.guildId);
+  const distubeQueue = client.distube.getQueue(interaction.guildId);
   const voiceChannel = interaction.member.voice.channel;
 
-  // Basic checks
-  if (!queue.player || !queue.currentSong) {
+  if (!distubeQueue || !distubeQueue.songs[0]) {
     return interaction.reply({ content: '❌ No music is currently playing!', ephemeral: true });
   }
 
-  if (!voiceChannel || voiceChannel.id !== queue.player.channelId) {
+  if (!voiceChannel || voiceChannel.id !== distubeQueue.voiceChannel?.id) {
     return interaction.reply({ content: '🥺 You must be in the same voice channel as Looki!', ephemeral: true });
   }
 
-  // ── Authorization Check for Destructive Controls ───────────
   const destructiveActions = ['music_skip', 'music_stop', 'music_clear', 'music_shuffle', 'music_previous'];
   if (destructiveActions.includes(interaction.customId)) {
     const isAlone = voiceChannel.members.filter(m => !m.user.bot).size === 1;
     const isMod = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
-    const isRequester = queue.currentSong.requester === interaction.user.tag;
+    const isRequester = distubeQueue.songs[0].user?.tag === interaction.user.tag;
 
     if (!isAlone && !isMod && !isRequester) {
       return interaction.reply({ 
@@ -84,75 +77,75 @@ async function handleMusicButtons(interaction, client) {
   try {
     switch (interaction.customId) {
       case 'music_pause_resume':
-        const isPaused = queue.player.paused;
-        await queue.player.pause(!isPaused);
-        await interaction.reply({ 
-          content: `${!isPaused ? '⏸️ Paused' : '▶️ Resumed'} by ${interaction.user}`, 
-          ephemeral: false 
-        });
+        if (distubeQueue.paused) {
+          distubeQueue.resume();
+          await interaction.reply({ content: `▶️ Resumed by ${interaction.user}` });
+        } else {
+          distubeQueue.pause();
+          await interaction.reply({ content: `⏸️ Paused by ${interaction.user}` });
+        }
         break;
 
       case 'music_skip':
-        await queue.player.stopTrack(); // playNext is triggered by 'end' event
-        await interaction.reply({ content: `⏭️ Skipped by ${interaction.user}` });
+        if (distubeQueue.songs.length <= 1 && distubeQueue.repeatMode === 0) {
+          await distubeQueue.stop();
+          await interaction.reply({ content: `⏹️ Queue ended and stopped by ${interaction.user}` });
+        } else {
+          await distubeQueue.skip();
+          await interaction.reply({ content: `⏭️ Skipped by ${interaction.user}` });
+        }
         break;
 
       case 'music_previous':
-        const prev = getPreviousSong(interaction.guildId);
-        if (!prev) return interaction.reply({ content: '❌ No previous songs in history!', ephemeral: true });
-        
-        await queue.player.stopTrack(); // playNext will be called and pick up 'prev'
-        await interaction.reply({ content: `⏮️ Moving back to: **${prev.title}**` });
+        if (distubeQueue.previousSongs.length === 0) {
+          return interaction.reply({ content: '❌ No previous songs in history!', ephemeral: true });
+        }
+        await distubeQueue.previous();
+        await interaction.reply({ content: `⏮️ Moving back to previous track!` });
         break;
 
       case 'music_shuffle':
-        const shuffled = shuffleQueue(interaction.guildId);
-        await interaction.reply({ 
-          content: shuffled ? `🔀 Queue shuffled by ${interaction.user}` : '❌ Not enough songs to shuffle!', 
-          ephemeral: !shuffled 
-        });
+        await distubeQueue.shuffle();
+        await interaction.reply({ content: `🔀 Queue shuffled by ${interaction.user}` });
         break;
 
       case 'music_stop':
-        await deleteQueue(interaction.guildId, client);
+        await distubeQueue.stop();
         await interaction.reply({ content: `⏹️ Stopped and disconnected by ${interaction.user}` });
         break;
 
       case 'music_clear':
-        queue.songs = [];
+        distubeQueue.songs = [distubeQueue.songs[0]];
         await interaction.reply({ content: `🗑️ Queue cleared by ${interaction.user}` });
         break;
 
       case 'music_vol_up':
-        const newVolUp = setVolume(interaction.guildId, queue.volume + 10);
+        const newVolUp = Math.min(distubeQueue.volume + 10, 100);
+        distubeQueue.setVolume(newVolUp);
         await interaction.reply({ content: `🔊 Volume increased to **${newVolUp}%**`, ephemeral: true });
         break;
 
       case 'music_vol_down':
-        const newVolDown = setVolume(interaction.guildId, queue.volume - 10);
+        const newVolDown = Math.max(distubeQueue.volume - 10, 0);
+        distubeQueue.setVolume(newVolDown);
         await interaction.reply({ content: `🔉 Volume decreased to **${newVolDown}%**`, ephemeral: true });
         break;
 
       case 'music_loop':
-        const mode = toggleRepeat(interaction.guildId);
-        await interaction.reply({ content: `🔁 Loop mode: **${mode.toUpperCase()}**` });
+        let newMode = (distubeQueue.repeatMode + 1) % 3;
+        distubeQueue.setRepeatMode(newMode);
+        const modes = ['OFF', 'TRACK', 'QUEUE'];
+        await interaction.reply({ content: `🔁 Loop mode: **${modes[newMode]}**` });
         break;
 
       case 'music_like':
-        await interaction.reply({ content: `❤️ Added **${queue.currentSong.title}** to your favorites!`, ephemeral: true });
-        break;
-
-      case 'music_queue':
-        const songs = queue.songs.slice(0, 5).map((s, i) => `**${i + 1}.** ${s.title}`).join('\n') || 'No more songs in queue.';
-        const qEmbed = createEmbed('music', client)
-          .setTitle('📜 Upcoming Tracks')
-          .setDescription(songs)
-          .setFooter({ text: `Total Songs: ${queue.songs.length}` });
-        await interaction.reply({ embeds: [qEmbed], ephemeral: true });
+        await interaction.reply({ content: `❤️ Added **${distubeQueue.songs[0].name}** to your favorites!`, ephemeral: true });
         break;
     }
   } catch (error) {
     console.error('Button Interaction Error:', error);
-    await interaction.reply({ content: '❌ Failed to process that action.', ephemeral: true });
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: '❌ Failed to process that action.', ephemeral: true }).catch(() => {});
+    }
   }
 }

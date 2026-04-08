@@ -1,50 +1,38 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
-const { getQueue } = require('../../utils/musicManager');
 
 module.exports = {
   name: 'nowplaying',
   data: new SlashCommandBuilder()
     .setName('nowplaying')
-    .setDescription('See information about the song currently playing ✨'),
+    .setDescription('Show details of the current song 🎀'),
   execute: async (interaction, client) => {
-    const queue = getQueue(interaction.guildId);
+    const queue = client.distube.getQueue(interaction.guildId);
 
-    if (!queue.player || !queue.isPlaying) {
+    if (!queue || !queue.songs[0]) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
-        .setDescription('There is no song currently playing! 🎀');
+        .setDescription('Nothing is playing right now! 🦋');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
     try {
-      await interaction.deferReply();
-      
-      const song = queue.currentSong;
-      const position = queue.player.position;
-      const length = song.duration;
-      
-      // Progress bar (basic)
-      const totalParts = 15;
-      const progress = Math.min(Math.floor((position / (song.durationMs || 1000)) * totalParts), totalParts);
-      const bar = '▬'.repeat(progress) + '○' + '▬'.repeat(totalParts - progress);
-      
-      const npEmbed = createEmbed('music', client)
-        .setTitle('✨ Now Playing')
-        .setDescription(`**[${song.title}](${song.url})**`)
+      const song = queue.songs[0];
+      const embed = createEmbed('music', client)
+        .setTitle(`${song.name}`)
+        .setURL(song.url)
+        .setThumbnail(song.thumbnail)
         .addFields(
-           { name: '🦋 Requester', value: song.requester, inline: true },
-           { name: '⏲️ Duration', value: `${new Date(position || 0).toISOString().substr(11, 8).replace(/^00:/, '')} / ${length}`, inline: true }
+          { name: '🦋 Artist', value: `> **${song.uploader.name}**`, inline: true },
+          { name: '💖 Progress', value: `> **${queue.formattedCurrentTime} / ${song.formattedDuration}**`, inline: true },
+          { name: '🧸 Requested by', value: `> **${song.user.tag}**`, inline: true }
         );
-      
-      if (bar) npEmbed.addFields({ name: 'Progress', value: `\`${bar}\`` });
-      if (song.thumbnail) npEmbed.setThumbnail(song.thumbnail);
 
-      await interaction.editReply({ embeds: [npEmbed] });
+      await interaction.reply({ embeds: [embed] });
       
     } catch (error) {
-       console.error('NowPlaying error:', error);
-       await interaction.editReply({ content: '🥺 Failed to fetch track information.' });
+      console.error('Nowplaying error:', error);
+      await interaction.reply({ content: '❌ Error fetching playback details.', ephemeral: true });
     }
   },
 };

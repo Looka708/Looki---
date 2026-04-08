@@ -1,6 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
-const { getQueue } = require('../../utils/musicManager');
 
 module.exports = {
   name: 'resume',
@@ -8,16 +7,16 @@ module.exports = {
     .setName('resume')
     .setDescription('Resume the paused song 🎀'),
   execute: async (interaction, client) => {
-    const queue = getQueue(interaction.guildId);
+    const queue = client.distube.getQueue(interaction.guildId);
 
-    if (!queue.player || !queue.isPlaying) {
+    if (!queue || !queue.songs[0]) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('There is no song playing to resume! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
-    if (!queue.player.paused) {
+    if (!queue.paused) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🎀 Already Resumed')
         .setDescription('The player is already playing! 🎀');
@@ -26,11 +25,11 @@ module.exports = {
 
     try {
       await interaction.deferReply();
-      await queue.player.pause(false);
+      queue.resume();
 
       const resumeEmbed = createEmbed('music', client)
         .setTitle('🎀 Song Resumed')
-        .setDescription(`Resumed **[${queue.currentSong?.title}](${queue.currentSong?.url})**! ✨`);
+        .setDescription(`Resumed **[${queue.songs[0].name}](${queue.songs[0].url})**! ✨`);
       
       await interaction.editReply({ embeds: [resumeEmbed] });
       

@@ -1,51 +1,45 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
-const { getQueue } = require('../../utils/musicManager');
 
 module.exports = {
   name: 'loop',
   data: new SlashCommandBuilder()
     .setName('loop')
-    .setDescription('🦋 Toggle between track loop, queue loop, and off')
-    .addStringOption(option => 
+    .setDescription('Toggle loop mode 🔁')
+    .addIntegerOption(option =>
       option.setName('mode')
-        .setDescription('The loop mode')
+        .setDescription('Loop mode')
         .setRequired(true)
         .addChoices(
-          { name: 'Track', value: 'one' },
-          { name: 'Queue', value: 'all' },
-          { name: 'Off', value: 'off' }
+          { name: 'Off', value: 0 },
+          { name: 'Track', value: 1 },
+          { name: 'Queue', value: 2 }
         )
     ),
   execute: async (interaction, client) => {
-    const voiceChannel = interaction.member?.voice?.channel;
+    const queue = client.distube.getQueue(interaction.guildId);
 
-    if (!voiceChannel) {
+    if (!queue) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('🥺 Join a Voice Channel')
-        .setDescription('You must be in a voice channel to change loop settings! 🎀');
+        .setTitle('🥺 Nothing Playing')
+        .setDescription('No music is currently playing! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
-    const queue = getQueue(interaction.guildId);
-    
-    if (!queue.audioPlayer) {
-      const emptyEmbed = createEmbed('error', client)
-        .setDescription('There is no music playing right now.');
-      return interaction.reply({ embeds: [emptyEmbed], ephemeral: true });
+    try {
+      const mode = interaction.options.getInteger('mode');
+      queue.setRepeatMode(mode);
+      
+      const modes = ['OFF', 'TRACK', 'QUEUE'];
+      const embed = createEmbed('music', client)
+        .setTitle('🔁 Loop Mode Updated')
+        .setDescription(`Set loop mode to: **${modes[mode]}** ✨`);
+      
+      await interaction.reply({ embeds: [embed] });
+      
+    } catch (error) {
+       console.error('Loop error:', error);
+       await interaction.reply({ content: '❌ Failed to update loop mode.', ephemeral: true });
     }
-
-    const mode = interaction.options.getString('mode');
-    queue.repeat = mode;
-
-    let modeText = 'Off';
-    if (mode === 'one') modeText = 'Current Track 🔂';
-    if (mode === 'all') modeText = 'Entire Queue 🦋';
-
-    const embed = createEmbed('music', client)
-      .setTitle('🦋 Loop Updated')
-      .setDescription(`Loop mode has been set to: **${modeText}**\ndone bestie ✦`);
-
-    await interaction.reply({ embeds: [embed] });
   },
 };

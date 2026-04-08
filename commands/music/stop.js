@@ -1,6 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
-const { deleteQueue } = require('../../utils/musicManager');
 
 module.exports = {
   name: 'stop',
@@ -8,11 +7,19 @@ module.exports = {
     .setName('stop')
     .setDescription('Stop the current song and clear the queue ⏹️'),
   execute: async (interaction, client) => {
+    const queue = client.distube.getQueue(interaction.guildId);
+
+    if (!queue) {
+      const errorEmbed = createEmbed('error', client)
+        .setTitle('🥺 Nothing Playing')
+        .setDescription('No music is currently playing! 🎀');
+      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+    }
+
     try {
       await interaction.deferReply();
       
-      const guildId = interaction.guildId;
-      await deleteQueue(guildId, client); // This will cleanly destroy the Shoukaku player too
+      await queue.stop();
 
       const stopEmbed = createEmbed('music', client)
         .setTitle('⏹️ Stopped Playing')
