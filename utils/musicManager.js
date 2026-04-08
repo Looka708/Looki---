@@ -121,12 +121,13 @@ function toggleRepeat(guildId) {
 }
 
 // Delete queue
-function deleteQueue(guildId, client) {
+async function deleteQueue(guildId, client) {
   const queue = queues.get(guildId);
   if (queue && queue.player) {
-    queue.player.stopTrack();
     if (client && client.shoukaku) {
-      client.shoukaku.leaveVoiceChannel(guildId);
+      await client.shoukaku.leaveVoiceChannel(guildId);
+    } else {
+      queue.player.stopTrack();
     }
   }
   queues.delete(guildId);

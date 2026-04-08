@@ -103,9 +103,10 @@ module.exports = {
 
       if (!queue.player) {
         let existingPlayer = client.shoukaku.players.get(interaction.guildId);
+        let existingConnection = client.shoukaku.connections.get(interaction.guildId);
 
-        // 🌸 If player exists but isn't strictly connected, fully leave to prevent ghost state
-        if (existingPlayer && existingPlayer.connection.state !== 1) {
+        // 🌸 If player or connection exists but isn't strictly connected, fully leave to prevent ghost state
+        if ((existingPlayer && existingPlayer.connection.state !== 1) || (!existingPlayer && existingConnection)) {
           await client.shoukaku.leaveVoiceChannel(interaction.guildId);
           existingPlayer = null;
           await new Promise(r => setTimeout(r, 500));

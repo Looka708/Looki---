@@ -114,7 +114,7 @@ async function handleMusicButtons(interaction, client) {
         break;
 
       case 'music_stop':
-        deleteQueue(interaction.guildId, client);
+        await deleteQueue(interaction.guildId, client);
         await interaction.reply({ content: `⏹️ Stopped and disconnected by ${interaction.user}` });
         break;
 
