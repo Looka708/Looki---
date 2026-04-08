@@ -8,8 +8,10 @@ const axios = require('axios');
 console.log('🌸 [System] Initializing Looki with DisTube Local Audio...');
 
 const { DisTube } = require('distube');
-const { PlayDlExtractor } = require('@distube/play-dl');
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const { YouTubePlugin } = require('@distube/youtube');
+const { SpotifyPlugin } = require('@distube/spotify');
+const { SoundCloudPlugin } = require('@distube/soundcloud');
+const { Client, Collection, GatewayIntentBits, PermissionFlagsBits } = require('discord.js');
 const { initializeTables } = require('./utils/supabase');
 const { handleDistubeEvents } = require('./utils/audioPlayer');
 
@@ -59,7 +61,11 @@ client.distube = new DisTube(client, {
     emitNewSongOnly: true,
     emitAddSongReplay: false,
     emitAddListReplay: false,
-    plugins: [new PlayDlExtractor()]
+    plugins: [
+        new YouTubePlugin(),
+        new SpotifyPlugin(),
+        new SoundCloudPlugin()
+    ]
 });
 
 // Initialize DisTube Events (handled in audioPlayer.js)
