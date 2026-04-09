@@ -44,7 +44,7 @@ async function handleMusicButtons(interaction, client) {
 
   try {
     switch (interaction.customId) {
-      case 'music_pause':
+      case 'music_pause_resume':
         if (queue.paused) {
           queue.resume();
           await interaction.reply({ content: '▶️ Resumed the melody! ✨', ephemeral: true });
@@ -69,18 +69,27 @@ async function handleMusicButtons(interaction, client) {
         }
         break;
 
+      case 'music_previous':
+        try {
+            await queue.previous();
+            await interaction.reply({ content: '⏮️ Returning to the previous melody! 🎀', ephemeral: true });
+        } catch (e) {
+            await interaction.reply({ content: '🥺 No previous songs to play! ✨', ephemeral: true });
+        }
+        break;
+
       case 'music_stop':
         queue.stop();
         await interaction.reply({ content: '⏹️ Music stopped and queue cleared! ✨', ephemeral: true });
         break;
 
-      case 'music_volume_up':
+      case 'music_vol_up':
         const newVolUp = Math.min(queue.volume + 10, 100);
         queue.setVolume(newVolUp);
         await interaction.reply({ content: `🔊 Volume increased to **${newVolUp}%** ✨`, ephemeral: true });
         break;
 
-      case 'music_volume_down':
+      case 'music_vol_down':
         const newVolDown = Math.max(queue.volume - 10, 0);
         queue.setVolume(newVolDown);
         await interaction.reply({ content: `🔉 Volume decreased to **${newVolDown}%** ✨`, ephemeral: true });
@@ -96,6 +105,33 @@ async function handleMusicButtons(interaction, client) {
           queue.setRepeatMode(nextMode);
           const modes = ['OFF', 'TRACK', 'QUEUE'];
           await interaction.reply({ content: `🔁 Loop mode: **${modes[nextMode]}** ✨`, ephemeral: true });
+          break;
+
+      case 'music_clear':
+          if (queue.songs.length <= 1) {
+              await interaction.reply({ content: '🧸 Queue is already mostly empty! ✨', ephemeral: true });
+          } else {
+              const currentSong = queue.songs[0];
+              queue.songs = [currentSong];
+              await interaction.reply({ content: '🧹 Cleared the upcoming songs! ✨', ephemeral: true });
+          }
+          break;
+
+      case 'music_like':
+          const song = queue.songs[0];
+          try {
+              const UserFavorites = require('../models/UserFavorites');
+              await UserFavorites.addFavorite(interaction.user.id, {
+                  name: song.name,
+                  url: song.url,
+                  thumbnail: song.thumbnail,
+                  uploader: { name: song.uploader.name }
+              });
+              await interaction.reply({ content: `🤍 Added **${song.name}** to your favorites! 🎀`, ephemeral: true });
+          } catch (e) {
+             console.error('Like button error:', e);
+             await interaction.reply({ content: '🥺 Could not save to favorites... ✨', ephemeral: true });
+          }
           break;
 
       default:

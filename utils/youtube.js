@@ -63,8 +63,18 @@ function cookiesToString(cookies) {
 
 async function getYouTubeClient(forceNew = false) {
     if (!yt || forceNew) {
-        const cookiePath = path.join(__dirname, '../cookies.txt');
-        const cookies = parseCookies(cookiePath);
+        let cookiePath = null;
+        const cookieFiles = ['www.youtube.com_cookies.txt', 'cookies.txt', 'Cookies.txt'];
+        
+        for (const file of cookieFiles) {
+            const fullPath = path.join(__dirname, '..', file);
+            if (fs.existsSync(fullPath)) {
+                cookiePath = fullPath;
+                break;
+            }
+        }
+
+        const cookies = cookiePath ? parseCookies(cookiePath) : null;
         const cookieString = cookiesToString(cookies);
 
         yt = await Innertube.create({
