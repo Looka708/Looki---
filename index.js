@@ -4,11 +4,14 @@ const path = require('path');
 const http = require('http');
 const axios = require('axios');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const { DisTube } = require('distube');
+const { YouTubePlugin } = require('@distube/youtube');
+const { SpotifyPlugin } = require('@distube/spotify');
+const { SoundCloudPlugin } = require('@distube/soundcloud');
+const ffmpeg = require('ffmpeg-static');
 const { initializeTables } = require('./utils/supabase');
-
-// 🌸 Music Architecture (Shoukaku/Lavalink)
-const { initializeShoukaku } = require('./utils/shoukaku');
-const MusicManager = require('./utils/musicManager');
+const { handleDistubeEvents } = require('./utils/audioPlayer');
+const { parseCookies } = require('./utils/youtube');
 
 // ── Global Error Handling to Prevent Crashes ───────────
 process.on('unhandledRejection', (reason, promise) => {
@@ -18,7 +21,7 @@ process.on('uncaughtException', (err) => {
   console.error('🥺 [Anti-Crash] Uncaught Exception:', err);
 });
 
-// ── Heartbeat Server (Prevents Koyeb from sleeping) ───────────
+// ── Heartbeat Server
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('Looki Bot is awake and flourishing 🌸\n');
@@ -28,18 +31,6 @@ const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log(`🌸 Heartbeat server listening on port ${PORT}`);
 });
-
-// Self-ping
-if (process.env.SELF_URL) {
-  setInterval(async () => {
-    try {
-      await axios.get(process.env.SELF_URL);
-      console.log('💓 Self-ping successful: Staying awake!');
-    } catch (err) {
-      console.error('💓 Self-ping failed:', err.message);
-    }
-  }, 900000); // 15 mins
-}
 
 const client = new Client({
   intents: [
@@ -51,9 +42,41 @@ const client = new Client({
   ],
 });
 
-// Initialize Shoukaku & Music
-initializeShoukaku(client);
-client.music = new MusicManager(client);
+// 🌸 YouTube Cookie Loading
+let youtubeCookies = [];
+try {
+  const cookiePath = path.join(__dirname, 'cookies.txt');
+  if (fs.existsSync(cookiePath)) {
+    youtubeCookies = parseCookies(cookiePath);
+    console.log(`🌸 [System] Loaded ${youtubeCookies.length} YouTube cookies from cookies.txt`);
+  } else if (process.env.YOUTUBE_COOKIE) {
+    youtubeCookies = parseCookies(process.env.YOUTUBE_COOKIE);
+    console.log(`🌸 [System] Loaded YouTube cookies from environment variable`);
+  } else {
+    console.log('🥺 [System] No YouTube cookies found. Using default session (risk of bot detection).');
+  }
+} catch (error) {
+  console.error('❌ [System] Error loading YouTube cookies:', error.message);
+}
+
+// 🌸 DisTube Initialization
+client.distube = new DisTube(client, {
+    ffmpeg: {
+        path: ffmpeg
+    },
+    emitNewSongOnly: true,
+    nsfw: true,
+    plugins: [
+        new YouTubePlugin({
+            cookies: youtubeCookies.length > 0 ? youtubeCookies : undefined
+        }),
+        new SpotifyPlugin(),
+        new SoundCloudPlugin()
+    ]
+});
+
+// Initialize DisTube Events
+handleDistubeEvents(client);
 
 // Initialize command collection
 client.commands = new Collection();
@@ -70,25 +93,21 @@ async function connectDatabase() {
   }
 }
 
-// Load commands
+// Load commands, events, etc.
 function loadCommands() {
   const commandsPath = path.join(__dirname, 'commands');
   const categories = fs.readdirSync(commandsPath);
-
   categories.forEach((category) => {
     const categoryPath = path.join(commandsPath, category);
     const commandFiles = fs.readdirSync(categoryPath).filter(file => file.endsWith('.js'));
-
     commandFiles.forEach((file) => {
       const filePath = path.join(categoryPath, file);
       try {
         const command = require(filePath);
         const commandName = command.name || command.data?.name;
-        
         if (commandName) {
           client.commands.set(commandName, command);
           client.prefixCommands.set(commandName, command);
-          
           if (command.aliases && Array.isArray(command.aliases)) {
             command.aliases.forEach(alias => client.prefixCommands.set(alias, command));
           }
@@ -98,15 +117,12 @@ function loadCommands() {
       }
     });
   });
-
   console.log(`✦ Loaded ${client.commands.size} commands`);
 }
 
-// Load events
 function loadEvents() {
   const eventsPath = path.join(__dirname, 'events');
   const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
-
   eventFiles.forEach((file) => {
     const filePath = path.join(eventsPath, file);
     try {
@@ -120,11 +136,9 @@ function loadEvents() {
       console.error(`Error loading event ${file}:`, error);
     }
   });
-
   console.log('✦ Event handlers loaded');
 }
 
-// Initialize bot
 async function start() {
   try {
     const token = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
@@ -132,7 +146,6 @@ async function start() {
       console.error('❌ DISCORD_TOKEN is not set');
       process.exit(1);
     }
-
     await connectDatabase();
     loadCommands();
     loadEvents();

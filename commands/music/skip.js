@@ -5,35 +5,44 @@ module.exports = {
   name: 'skip',
   data: new SlashCommandBuilder()
     .setName('skip')
-    .setDescription('Skip the current song via Lavalink ✨'),
+    .setDescription('Skip the current song 🧸'),
   execute: async (interaction, client) => {
-    const queue = client.music.queues.get(interaction.guildId);
+    const queue = client.distube.getQueue(interaction.guildId);
 
-    if (!queue || queue.songs.length === 0) {
+    if (!queue || !queue.songs[0]) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
-        .setDescription('There is no song playing to skip! 🎀');
+        .setDescription('There is no song to skip! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
     try {
       await interaction.deferReply();
       
-      const currentSong = queue.songs[0];
-      client.music.skip(interaction.guildId);
+      if (queue.songs.length <= 1 && !queue.autoplay) {
+          queue.stop();
+          const stopEmbed = createEmbed('music', client)
+            .setTitle('🧸 Queue Ended')
+            .setDescription('No more songs in queue! Stopping playback. ✨');
+          return interaction.editReply({ embeds: [stopEmbed] });
+      }
+
+      await queue.skip();
 
       const skipEmbed = createEmbed('music', client)
-        .setTitle('✨ Skipped Song')
-        .setDescription(`Skipped **[${currentSong.title}](${currentSong.uri})**`);
+        .setTitle('🧸 Song Skipped')
+        .setDescription('Skipped to the next melody! 🎀');
       
       await interaction.editReply({ embeds: [skipEmbed] });
       
     } catch (error) {
-      console.error('Skip command error:', error);
-      const errorEmbed = createEmbed('error', client)
-        .setTitle('🥺 Error Skipping')
-        .setDescription('Something went wrong while trying to skip.');
-      await interaction.editReply({ embeds: [errorEmbed] });
+       console.error('Skip error:', error);
+       // Handle "No next song" error gracefully
+       if (error.message.includes('NO_UP_NEXT')) {
+           queue.stop();
+           return interaction.editReply({ content: '🧸 No more songs to skip to! Stopping playback. ✨' });
+       }
+       await interaction.editReply({ content: '🥺 Failed to skip the song.' });
     }
   },
 };

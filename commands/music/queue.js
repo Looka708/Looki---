@@ -5,11 +5,11 @@ module.exports = {
   name: 'queue',
   data: new SlashCommandBuilder()
     .setName('queue')
-    .setDescription('See the upcoming songs in the Lavalink queue 📜'),
+    .setDescription('See the upcoming songs 📜'),
   execute: async (interaction, client) => {
-    const queue = client.music.queues.get(interaction.guildId);
+    const queue = client.distube.getQueue(interaction.guildId);
 
-    if (!queue || queue.songs.length === 0) {
+    if (!queue) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('No music is currently playing! 🎀');
@@ -19,13 +19,13 @@ module.exports = {
     try {
       const q = queue.songs
         .slice(0, 10)
-        .map((song, i) => `${i === 0 ? '▶️' : `**${i}.**`} [${song.title}](${song.uri}) - \`${client.music.formatDuration(song.length)}\``)
+        .map((song, i) => `${i === 0 ? '▶️' : `**${i}.**`} [${song.name}](${song.url}) - \`${song.formattedDuration}\``)
         .join('\n');
 
       const embed = createEmbed('music', client)
         .setTitle('📜 Current Queue')
         .setDescription(q || 'No more songs in queue!')
-        .setFooter({ text: `Tracks: ${queue.songs.length}` });
+        .setFooter({ text: `Tracks: ${queue.songs.length} | Duration: ${queue.formattedDuration}` });
 
       await interaction.reply({ embeds: [embed] });
       

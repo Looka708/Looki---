@@ -5,7 +5,7 @@ module.exports = {
   name: 'loop',
   data: new SlashCommandBuilder()
     .setName('loop')
-    .setDescription('Toggle loop mode via Lavalink 🔁')
+    .setDescription('Toggle loop mode 🔁')
     .addIntegerOption(option =>
       option.setName('mode')
         .setDescription('Loop mode')
@@ -17,7 +17,7 @@ module.exports = {
         )
     ),
   execute: async (interaction, client) => {
-    const queue = client.music.queues.get(interaction.guildId);
+    const queue = client.distube.getQueue(interaction.guildId);
 
     if (!queue) {
       const errorEmbed = createEmbed('error', client)
@@ -28,7 +28,7 @@ module.exports = {
 
     try {
       const mode = interaction.options.getInteger('mode');
-      queue.loop = mode;
+      queue.setRepeatMode(mode);
       
       const modes = ['OFF', 'TRACK', 'QUEUE'];
       const embed = createEmbed('music', client)
