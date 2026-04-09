@@ -5,31 +5,32 @@ module.exports = {
   name: 'resume',
   data: new SlashCommandBuilder()
     .setName('resume')
-    .setDescription('Resume the paused song 🎀'),
+    .setDescription('Resume the paused song via Lavalink ✨'),
   execute: async (interaction, client) => {
-    const queue = client.distube.getQueue(interaction.guildId);
+    const queue = client.music.queues.get(interaction.guildId);
+    const player = client.shoukaku.players.get(interaction.guildId);
 
-    if (!queue || !queue.songs[0]) {
+    if (!queue || queue.songs.length === 0 || !player) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
-        .setDescription('There is no song playing to resume! 🎀');
+        .setDescription('There is no song to resume! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
-    if (!queue.paused) {
+    if (!player.paused) {
       const errorEmbed = createEmbed('error', client)
-        .setTitle('🎀 Already Resumed')
-        .setDescription('The player is already playing! 🎀');
+        .setTitle('✨ Already Playing')
+        .setDescription('The player is not paused! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
     try {
       await interaction.deferReply();
-      queue.resume();
+      player.resume();
 
       const resumeEmbed = createEmbed('music', client)
-        .setTitle('🎀 Song Resumed')
-        .setDescription(`Resumed **[${queue.songs[0].name}](${queue.songs[0].url})**! ✨`);
+        .setTitle('✨ Song Resumed')
+        .setDescription(`Resumed **[${queue.songs[0].title}](${queue.songs[0].uri})**! 🎀`);
       
       await interaction.editReply({ embeds: [resumeEmbed] });
       

@@ -5,25 +5,30 @@ module.exports = {
   name: 'stop',
   data: new SlashCommandBuilder()
     .setName('stop')
-    .setDescription('Stop the current song and clear the queue ⏹️'),
+    .setDescription('Stop the music and leave the voice channel 🎀'),
   execute: async (interaction, client) => {
-    const queue = client.distube.getQueue(interaction.guildId);
+    const queue = client.music.queues.get(interaction.guildId);
 
     if (!queue) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
-        .setDescription('No music is currently playing! 🎀');
+        .setDescription('There is no active music session to stop! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
     try {
       await interaction.deferReply();
       
-      await queue.stop();
+      client.music.stop(interaction.guildId);
+      
+      const player = client.shoukaku.players.get(interaction.guildId);
+      if (player) {
+          await client.shoukaku.leaveVoiceChannel(interaction.guildId);
+      }
 
       const stopEmbed = createEmbed('music', client)
-        .setTitle('⏹️ Stopped Playing')
-        .setDescription('The queue has been cleared and I have disconnected from the voice channel! 🌸');
+        .setTitle('⏹️ Stopped Music')
+        .setDescription('The music has been stopped and I have left the voice channel. Bye bye! ~ ✨');
       
       await interaction.editReply({ embeds: [stopEmbed] });
       
@@ -32,8 +37,7 @@ module.exports = {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Error Stopping')
         .setDescription('Something went wrong while trying to stop.');
-      if (interaction.deferred) await interaction.editReply({ embeds: [errorEmbed] });
-      else await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      await interaction.editReply({ embeds: [errorEmbed] });
     }
   },
 };

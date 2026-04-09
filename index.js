@@ -3,18 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const axios = require('axios');
-
-// 🌸 Environment Debugging ───────────
-console.log('🌸 [System] Initializing Looki with DisTube Local Audio...');
-
-const { DisTube } = require('distube');
-const { YouTubePlugin } = require('@distube/youtube');
-const { SpotifyPlugin } = require('@distube/spotify');
-const { SoundCloudPlugin } = require('@distube/soundcloud');
-const { Client, Collection, GatewayIntentBits, PermissionFlagsBits } = require('discord.js');
-const ffmpeg = require('ffmpeg-static');
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { initializeTables } = require('./utils/supabase');
-const { handleDistubeEvents } = require('./utils/audioPlayer');
+
+// 🌸 Music Architecture (Shoukaku/Lavalink)
+const { initializeShoukaku } = require('./utils/shoukaku');
+const MusicManager = require('./utils/musicManager');
 
 // ── Global Error Handling to Prevent Crashes ───────────
 process.on('unhandledRejection', (reason, promise) => {
@@ -35,7 +29,7 @@ server.listen(PORT, () => {
   console.log(`🌸 Heartbeat server listening on port ${PORT}`);
 });
 
-// Self-ping to keep service active (optional but recommended for free tiers)
+// Self-ping
 if (process.env.SELF_URL) {
   setInterval(async () => {
     try {
@@ -44,7 +38,7 @@ if (process.env.SELF_URL) {
     } catch (err) {
       console.error('💓 Self-ping failed:', err.message);
     }
-  }, 900000); // Ping every 15 minutes
+  }, 900000); // 15 mins
 }
 
 const client = new Client({
@@ -57,23 +51,9 @@ const client = new Client({
   ],
 });
 
-// 🌸 DisTube Initialization
-client.distube = new DisTube(client, {
-    ffmpeg: {
-        path: ffmpeg
-    },
-    emitNewSongOnly: true,
-    nsfw: true,
-    plugins: [
-        new YouTubePlugin(),
-        new SpotifyPlugin(),
-        new SoundCloudPlugin()
-    ]
-});
-
-// Initialize DisTube Events (handled in audioPlayer.js)
-handleDistubeEvents(client);
-
+// Initialize Shoukaku & Music
+initializeShoukaku(client);
+client.music = new MusicManager(client);
 
 // Initialize command collection
 client.commands = new Collection();
@@ -149,7 +129,7 @@ async function start() {
   try {
     const token = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
     if (!token) {
-      console.error('❌ DISCORD_TOKEN / DISCORD_BOT_TOKEN is not set in environment variables');
+      console.error('❌ DISCORD_TOKEN is not set');
       process.exit(1);
     }
 

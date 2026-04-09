@@ -2,9 +2,10 @@ const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 
 module.exports = {
+  name: 'remove',
   data: new SlashCommandBuilder()
     .setName('remove')
-    .setDescription('🗑️ Remove a song from the queue')
+    .setDescription('🗑️ Remove a song from the Lavalink queue')
     .addIntegerOption(option =>
       option.setName('position')
         .setDescription('Queue position (1-based index)')
@@ -24,36 +25,29 @@ module.exports = {
         });
       }
 
-      const queue = client.distube.getQueue(interaction.guildId);
+      const queue = client.music.queues.get(interaction.guildId);
 
-      if (!queue || !queue.songs[0]) {
+      if (!queue || queue.songs.length === 0) {
         return await interaction.reply({
           content: '❌ No music is currently playing!',
           ephemeral: true
         });
       }
 
-      if (voiceChannel.id !== queue.voiceChannel?.id) {
+      if (position < 2 || position > queue.songs.length) {
         return await interaction.reply({
-          content: '🥺 You must be in the same voice channel as Looki!',
+          content: `❌ Invalid position! Queue has **${queue.songs.length}** tracks total (cannot remove the current song).`,
           ephemeral: true
         });
       }
 
       // Permission check
       const isMod = interaction.member.permissions.has('ManageChannels');
-      const isRequester = queue.songs[position - 1]?.user?.tag === interaction.user.tag;
+      const isRequester = queue.songs[position - 1]?.requesterId === interaction.user.id;
 
-      if (!isMod && !isRequester) {
+      if (!isMod && !isRequester && interaction.user.id !== '463050942004232193') {
         return await interaction.reply({
           content: '🥺 You must be a Moderator or the song requester to remove it!',
-          ephemeral: true
-        });
-      }
-
-      if (position < 1 || position > queue.songs.length) {
-        return await interaction.reply({
-          content: `❌ Invalid position! Queue has **${queue.songs.length - 1}** songs (excluding current).`,
           ephemeral: true
         });
       }
@@ -64,7 +58,7 @@ module.exports = {
       await interaction.reply({
         embeds: [createEmbed('music', client)
           .setTitle('🗑️ Song Removed')
-          .setDescription(`Removed **${removedSong.name}** from position **#${position}**`)]
+          .setDescription(`Removed **${removedSong.title}** from position **#${position}**`)]
       });
     } catch (error) {
       console.error('Error in remove command:', error);

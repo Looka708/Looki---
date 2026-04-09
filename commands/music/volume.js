@@ -5,7 +5,7 @@ module.exports = {
   name: 'volume',
   data: new SlashCommandBuilder()
     .setName('volume')
-    .setDescription('Adjust the music volume 🎀')
+    .setDescription('Adjust the music volume (0-100) 🎀')
     .addIntegerOption(option =>
       option.setName('amount')
         .setDescription('Volume percentage (0-100)')
@@ -14,9 +14,10 @@ module.exports = {
         .setMaxValue(100)
     ),
   execute: async (interaction, client) => {
-    const queue = client.distube.getQueue(interaction.guildId);
+    const queue = client.music.queues.get(interaction.guildId);
+    const player = client.shoukaku.players.get(interaction.guildId);
 
-    if (!queue) {
+    if (!queue || !player) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('No music is currently playing! 🎀');
@@ -25,7 +26,9 @@ module.exports = {
 
     try {
       const amount = interaction.options.getInteger('amount');
-      queue.setVolume(amount);
+      
+      queue.volume = amount;
+      await player.setVolume(amount / 100);
 
       const volEmbed = createEmbed('music', client)
         .setTitle('🔊 Volume Adjusted')

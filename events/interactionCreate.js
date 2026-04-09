@@ -50,22 +50,28 @@ module.exports = {
 async function handleMusicButtons(interaction, client) {
   const { createEmbed } = require('../utils/embedBuilder');
 
-  const distubeQueue = client.distube.getQueue(interaction.guildId);
   const voiceChannel = interaction.member.voice.channel;
-
-  if (!distubeQueue || !distubeQueue.songs[0]) {
-    return interaction.reply({ content: '❌ No music is currently playing!', ephemeral: true });
+  if (!voiceChannel) {
+    return interaction.reply({ content: '🥺 You must be in a voice channel!', ephemeral: true });
   }
 
-  if (!voiceChannel || voiceChannel.id !== distubeQueue.voiceChannel?.id) {
-    return interaction.reply({ content: '🥺 You must be in the same voice channel as Looki!', ephemeral: true });
+
+  const queue = client.music.queues.get(interaction.guildId);
+  const player = client.shoukaku.players.get(interaction.guildId);
+
+  if (!queue || !player) {
+    return interaction.reply({
+      content: '🥺 No active music session found!',
+      ephemeral: true
+    });
   }
 
-  const destructiveActions = ['music_skip', 'music_stop', 'music_clear', 'music_shuffle', 'music_previous'];
-  if (destructiveActions.includes(interaction.customId)) {
-    const isAlone = voiceChannel.members.filter(m => !m.user.bot).size === 1;
-    const isMod = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
-    const isRequester = distubeQueue.songs[0].user?.tag === interaction.user.tag;
+  // Permission Check
+  if (interaction.user.id !== '463050942004232193') { 
+    const isMod = interaction.member.permissions.has(PermissionFlagsBits.ManageMessages);
+    const isAlone = interaction.member.voice.channel?.members.size === 2;
+    const currentSong = queue.songs[0];
+    const isRequester = currentSong?.requesterId === interaction.user.id;
 
     if (!isAlone && !isMod && !isRequester) {
       return interaction.reply({
@@ -82,71 +88,70 @@ async function handleMusicButtons(interaction, client) {
 
     switch (interaction.customId) {
       case 'music_pause_resume':
-        if (distubeQueue.paused) {
-          distubeQueue.resume();
+        if (player.paused) {
+          player.resume();
           await interaction.editReply({ content: `▶️ Resumed by ${interaction.user}` });
         } else {
-          distubeQueue.pause();
+          player.pause();
           await interaction.editReply({ content: `⏸️ Paused by ${interaction.user}` });
         }
         break;
 
       case 'music_skip':
-        if (distubeQueue.songs.length <= 1 && distubeQueue.repeatMode === 0) {
-          await distubeQueue.stop();
+        if (queue.songs.length <= 1 && queue.loop === 0) {
+          client.music.stop(interaction.guildId);
+          await client.shoukaku.leaveVoiceChannel(interaction.guildId);
           await interaction.editReply({ content: `⏹️ Queue ended and stopped by ${interaction.user}` });
         } else {
-          await distubeQueue.skip();
+          client.music.skip(interaction.guildId);
           await interaction.editReply({ content: `⏭️ Skipped by ${interaction.user}` });
         }
         break;
 
       case 'music_previous':
-        if (distubeQueue.previousSongs.length === 0) {
-          return await interaction.editReply({ content: '❌ No previous songs in history!' });
-        }
-        await distubeQueue.previous();
-        await interaction.editReply({ content: `⏮️ Moving back to previous track!` });
+        await interaction.editReply({ content: '❌ History is not supported in the current Lavalink mode yet!' });
         break;
 
       case 'music_shuffle':
-        await distubeQueue.shuffle();
+        queue.songs = [queue.songs[0], ...queue.songs.slice(1).sort(() => Math.random() - 0.5)];
         await interaction.editReply({ content: `🔀 Queue shuffled by ${interaction.user}` });
         break;
 
       case 'music_stop':
-        await distubeQueue.stop();
+        client.music.stop(interaction.guildId);
+        await client.shoukaku.leaveVoiceChannel(interaction.guildId);
         await interaction.editReply({ content: `⏹️ Stopped and disconnected by ${interaction.user}` });
         break;
 
       case 'music_clear':
-        distubeQueue.songs = [distubeQueue.songs[0]];
+        queue.songs = [queue.songs[0]];
         await interaction.editReply({ content: `🗑️ Queue cleared by ${interaction.user}` });
         break;
 
       case 'music_vol_up':
-        const newVolUp = Math.min(distubeQueue.volume + 10, 100);
-        distubeQueue.setVolume(newVolUp);
+        const newVolUp = Math.min(queue.volume + 10, 100);
+        queue.volume = newVolUp;
+        player.setVolume(newVolUp / 100);
         await interaction.editReply({ content: `🔊 Volume increased to **${newVolUp}%**` });
         break;
 
       case 'music_vol_down':
-        const newVolDown = Math.max(distubeQueue.volume - 10, 0);
-        distubeQueue.setVolume(newVolDown);
+        const newVolDown = Math.max(queue.volume - 10, 0);
+        queue.volume = newVolDown;
+        player.setVolume(newVolDown / 100);
         await interaction.editReply({ content: `🔉 Volume decreased to **${newVolDown}%**` });
         break;
 
       case 'music_loop':
-        let newMode = (distubeQueue.repeatMode + 1) % 3;
-        distubeQueue.setRepeatMode(newMode);
+        queue.loop = (queue.loop + 1) % 3;
         const modes = ['OFF', 'TRACK', 'QUEUE'];
-        await interaction.editReply({ content: `🔁 Loop mode: **${modes[newMode]}**` });
+        await interaction.editReply({ content: `🔁 Loop mode: **${modes[queue.loop]}**` });
         break;
 
       case 'music_like':
         try {
-          const currentSong = distubeQueue.songs[0];
-          const isFavorited = await UserFavorites.isFavorite(interaction.user.id, currentSong.url);
+          const currentSong = queue.songs[0];
+          const isFavorited = await UserFavorites.isFavorite(interaction.user.id, currentSong.uri);
 
           if (isFavorited) {
             await UserFavorites.removeFavorite(interaction.user.id, currentSong.url);

@@ -44,9 +44,9 @@ module.exports = {
         });
       } else if (subcommand === 'add') {
         const playlistName = interaction.options.getString('playlist');
-        const queue = client.distube.getQueue(interaction.guildId);
+        const queue = client.music.queues.get(interaction.guildId);
 
-        if (!queue || !queue.songs[0]) {
+        if (!queue || queue.songs.length === 0) {
           return await interaction.reply({
             content: '❌ No music is currently playing!',
             ephemeral: true
@@ -59,7 +59,7 @@ module.exports = {
         await interaction.reply({
           embeds: [createEmbed('music', client)
             .setTitle('➕ Added to Playlist')
-            .setDescription(`Added **${song.name}** to **${playlistName}**`)],
+            .setDescription(`Added **${song.title}** to **${playlistName}**`)],
           ephemeral: true
         });
       } else if (subcommand === 'list') {
