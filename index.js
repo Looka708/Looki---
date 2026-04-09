@@ -63,7 +63,6 @@ client.distube = new DisTube(client, {
         path: ffmpeg
     },
     emitNewSongOnly: true,
-    leaveOnStop: true,
     leaveOnEmpty: true,
     leaveOnFinish: false, // Keep queue logic stable
     nsfw: true,

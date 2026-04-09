@@ -1,4 +1,5 @@
 const { EmbedBuilder, Collection, PermissionFlagsBits } = require('discord.js');
+const UserFavorites = require('../models/UserFavorites');
 
 const interactionCooldowns = new Collection();
 
@@ -75,77 +76,96 @@ async function handleMusicButtons(interaction, client) {
   }
 
   try {
+    await interaction.deferReply({ ephemeral: true });
+
     switch (interaction.customId) {
       case 'music_pause_resume':
         if (distubeQueue.paused) {
           distubeQueue.resume();
-          await interaction.reply({ content: `▶️ Resumed by ${interaction.user}` });
+          await interaction.editReply({ content: `▶️ Resumed by ${interaction.user}` });
         } else {
           distubeQueue.pause();
-          await interaction.reply({ content: `⏸️ Paused by ${interaction.user}` });
+          await interaction.editReply({ content: `⏸️ Paused by ${interaction.user}` });
         }
         break;
 
       case 'music_skip':
         if (distubeQueue.songs.length <= 1 && distubeQueue.repeatMode === 0) {
           await distubeQueue.stop();
-          await interaction.reply({ content: `⏹️ Queue ended and stopped by ${interaction.user}` });
+          await interaction.editReply({ content: `⏹️ Queue ended and stopped by ${interaction.user}` });
         } else {
           await distubeQueue.skip();
-          await interaction.reply({ content: `⏭️ Skipped by ${interaction.user}` });
+          await interaction.editReply({ content: `⏭️ Skipped by ${interaction.user}` });
         }
         break;
 
       case 'music_previous':
         if (distubeQueue.previousSongs.length === 0) {
-          return interaction.reply({ content: '❌ No previous songs in history!', ephemeral: true });
+          return await interaction.editReply({ content: '❌ No previous songs in history!' });
         }
         await distubeQueue.previous();
-        await interaction.reply({ content: `⏮️ Moving back to previous track!` });
+        await interaction.editReply({ content: `⏮️ Moving back to previous track!` });
         break;
 
       case 'music_shuffle':
         await distubeQueue.shuffle();
-        await interaction.reply({ content: `🔀 Queue shuffled by ${interaction.user}` });
+        await interaction.editReply({ content: `🔀 Queue shuffled by ${interaction.user}` });
         break;
 
       case 'music_stop':
         await distubeQueue.stop();
-        await interaction.reply({ content: `⏹️ Stopped and disconnected by ${interaction.user}` });
+        await interaction.editReply({ content: `⏹️ Stopped and disconnected by ${interaction.user}` });
         break;
 
       case 'music_clear':
         distubeQueue.songs = [distubeQueue.songs[0]];
-        await interaction.reply({ content: `🗑️ Queue cleared by ${interaction.user}` });
+        await interaction.editReply({ content: `🗑️ Queue cleared by ${interaction.user}` });
         break;
 
       case 'music_vol_up':
         const newVolUp = Math.min(distubeQueue.volume + 10, 100);
         distubeQueue.setVolume(newVolUp);
-        await interaction.reply({ content: `🔊 Volume increased to **${newVolUp}%**`, ephemeral: true });
+        await interaction.editReply({ content: `🔊 Volume increased to **${newVolUp}%**` });
         break;
 
       case 'music_vol_down':
         const newVolDown = Math.max(distubeQueue.volume - 10, 0);
         distubeQueue.setVolume(newVolDown);
-        await interaction.reply({ content: `🔉 Volume decreased to **${newVolDown}%**`, ephemeral: true });
+        await interaction.editReply({ content: `🔉 Volume decreased to **${newVolDown}%**` });
         break;
 
       case 'music_loop':
         let newMode = (distubeQueue.repeatMode + 1) % 3;
         distubeQueue.setRepeatMode(newMode);
         const modes = ['OFF', 'TRACK', 'QUEUE'];
-        await interaction.reply({ content: `🔁 Loop mode: **${modes[newMode]}**` });
+        await interaction.editReply({ content: `🔁 Loop mode: **${modes[newMode]}**` });
         break;
 
       case 'music_like':
-        await interaction.reply({ content: `❤️ Added **${distubeQueue.songs[0].name}** to your favorites!`, ephemeral: true });
+        try {
+          const currentSong = distubeQueue.songs[0];
+          const isFavorited = await UserFavorites.isFavorite(interaction.user.id, currentSong.url);
+          
+          if (isFavorited) {
+            await UserFavorites.removeFavorite(interaction.user.id, currentSong.url);
+            await interaction.editReply({ content: `💔 Removed **${currentSong.name}** from favorites` });
+          } else {
+            await UserFavorites.addFavorite(interaction.user.id, currentSong);
+            await interaction.editReply({ content: `❤️ Added **${currentSong.name}** to favorites!` });
+          }
+        } catch (error) {
+          console.error('Error handling like button:', error);
+          await interaction.editReply({ content: '❌ Failed to manage favorites - try again later' });
+        }
         break;
     }
   } catch (error) {
     console.error('Button Interaction Error:', error);
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({ content: '❌ Failed to process that action.', ephemeral: true }).catch(() => {});
+    } else {
+      await interaction.editReply({ content: '❌ Failed to process that action.' }).catch(() => {});
     }
   }
+}
 }

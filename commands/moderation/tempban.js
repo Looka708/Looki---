@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 const { parseDuration } = require('../../utils/duration');
+const TemporaryBan = require('../../models/TemporaryBan');
 
 module.exports = {
   name: 'tempban',
@@ -24,53 +25,78 @@ module.exports = {
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
   execute: async (interaction, client) => {
-    const targetUser = interaction.options.getUser('user');
-    const durationInput = interaction.options.getString('duration');
-    const reason = interaction.options.getString('reason') || 'no reason provided luv 🌸';
-
-    const durationMs = parseDuration(durationInput);
-    if (!durationMs || durationMs < 1000) {
-      return interaction.reply({ content: 'Invalid duration! Try `1d` or `1w` 🎀', ephemeral: true });
-    }
-
     try {
-      // Pre-emptively DM the user before banning, since you can't DM them after.
+      const targetUser = interaction.options.getUser('user');
+      const durationInput = interaction.options.getString('duration');
+      const reason = interaction.options.getString('reason') || 'no reason provided luv 🌸';
+
+      // Validate self-ban and bot ban
+      if (targetUser.id === interaction.user.id) {
+        return await interaction.reply({ 
+          content: '🥺 You cannot ban yourself!', 
+          ephemeral: true 
+        });
+      }
+
+      if (targetUser.id === client.user.id) {
+        return await interaction.reply({ 
+          content: '😊 You cannot ban me!', 
+          ephemeral: true 
+        });
+      }
+
+      const durationMs = parseDuration(durationInput);
+      if (!durationMs || durationMs < 1000) {
+        return await interaction.reply({ 
+          content: 'Invalid duration! Try `1d` or `1w` 🎀', 
+          ephemeral: true 
+        });
+      }
+
+      const endTime = new Date(Date.now() + durationMs);
+
+      // Pre-emptively DM the user before banning
       try {
         const dmEmbed = createEmbed('moderation', client)
-          .setTitle('🔨 you\'ve been temporarily banned')
-          .setDescription(`you were banned from \`${interaction.guild.name}\` 🎀`)
+          .setTitle('🔨 You\'ve been temporarily banned')
+          .setDescription(`You were banned from \`${interaction.guild.name}\` 🎀`)
           .addFields(
             { name: '💖 Duration', value: `\`${durationInput}\``, inline: true },
-            { name: '✦ Reason', value: reason, inline: true }
+            { name: '✦ Unban Time', value: `<t:${Math.floor(endTime.getTime() / 1000)}:F>`, inline: true },
+            { name: '📝 Reason', value: reason }
           );
         await targetUser.send({ embeds: [dmEmbed] });
       } catch (e) {
-        // they have dms blocked
+        // DMs blocked - that's fine, continue with ban
       }
 
-      await interaction.guild.members.ban(targetUser.id, { reason: `Tempban by ${interaction.user.tag}: ${reason}` });
+      // Ban the user
+      await interaction.guild.members.ban(targetUser.id, { 
+        reason: `Tempban by ${interaction.user.tag}: ${reason}` 
+      });
+
+      // Store in database for persistence
+      await TemporaryBan.createTempBan(
+        interaction.guildId,
+        targetUser.id,
+        endTime,
+        reason,
+        interaction.user.id
+      );
 
       const embed = createEmbed('moderation', client)
-        .setTitle('🔨 temp-ban issued')
+        .setTitle('🔨 Temporary Ban Issued')
         .setDescription(`${targetUser} was banned ✨`)
         .addFields(
           { name: '🎀 Duration', value: `\`${durationInput}\``, inline: true },
-          { name: '✦ Reason', value: reason, inline: true }
+          { name: '⏰ Unban Time', value: `<t:${Math.floor(endTime.getTime() / 1000)}:R>`, inline: true },
+          { name: '✦ Reason', value: reason }
         );
 
       await interaction.reply({ embeds: [embed] });
 
-      // Create an unban timeout
-      setTimeout(async () => {
-        try {
-          await interaction.guild.members.unban(targetUser.id, 'Tempban expired');
-        } catch (e) {
-            console.error(`Failed to unban ${targetUser.id} after timeout.`);
-        }
-      }, durationMs);
-
     } catch (error) {
-      console.error(error);
+      console.error('❌ [tempban.js] Error:', error);
       const errorEmbed = createEmbed('error', client)
         .setDescription('hmm that didn\'t work :( try again?');
       await interaction.reply({ embeds: [errorEmbed], ephemeral: true });

@@ -88,8 +88,91 @@ CREATE TABLE IF NOT EXISTS giveaways (
 CREATE INDEX IF NOT EXISTS idx_giveaways_guild_id ON giveaways(guild_id);
 CREATE INDEX IF NOT EXISTS idx_giveaways_ended ON giveaways(ended, end_time);
 
+-- User Music Favorites Table
+CREATE TABLE IF NOT EXISTS user_favorites (
+  id BIGSERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  song_name TEXT NOT NULL,
+  song_url TEXT NOT NULL,
+  artist_name TEXT,
+  source TEXT CHECK (source IN ('youtube', 'spotify', 'soundcloud')) DEFAULT 'youtube',
+  added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, song_url)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_favorites_user_id ON user_favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_favorites_added_at ON user_favorites(user_id, added_at DESC);
+
+-- User Music Stats Table
+CREATE TABLE IF NOT EXISTS user_music_stats (
+  id BIGSERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL UNIQUE,
+  total_songs_played INTEGER DEFAULT 0,
+  total_duration_ms INTEGER DEFAULT 0,
+  favorite_count INTEGER DEFAULT 0,
+  last_played_song TEXT,
+  most_played_artist TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_music_stats_user_id ON user_music_stats(user_id);
+
+-- Server Music Settings Table
+CREATE TABLE IF NOT EXISTS server_music_settings (
+  id BIGSERIAL PRIMARY KEY,
+  guild_id TEXT NOT NULL UNIQUE,
+  default_volume INTEGER DEFAULT 50,
+  dj_role_id TEXT,
+  music_channel_id TEXT,
+  announce_songs BOOLEAN DEFAULT TRUE,
+  autoplay_enabled BOOLEAN DEFAULT FALSE,
+  bitrate_quality TEXT DEFAULT 'high' CHECK (bitrate_quality IN ('low', 'medium', 'high')),
+  loop_default_mode INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_server_music_settings_guild_id ON server_music_settings(guild_id);
+
+-- Server Music Playlists Table
+CREATE TABLE IF NOT EXISTS server_playlists (
+  id BIGSERIAL PRIMARY KEY,
+  guild_id TEXT NOT NULL,
+  creator_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  songs JSONB DEFAULT '[]'::JSONB,
+  is_public BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(guild_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_server_playlists_guild_id ON server_playlists(guild_id);
+CREATE INDEX IF NOT EXISTS idx_server_playlists_creator ON server_playlists(creator_id);
+
+-- Music Activity Log (for diagnostics)
+CREATE TABLE IF NOT EXISTS music_activity_log (
+  id BIGSERIAL PRIMARY KEY,
+  guild_id TEXT NOT NULL,
+  user_id TEXT,
+  action TEXT CHECK (action IN ('play', 'skip', 'pause', 'resume', 'stop', 'error')) DEFAULT 'play',
+  song_name TEXT,
+  error_message TEXT,
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_music_activity_log_guild_id ON music_activity_log(guild_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_music_activity_log_action ON music_activity_log(action);
+
 -- Add RLS (Row Level Security) policies if needed
 ALTER TABLE warnings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE xp ENABLE ROW LEVEL SECURITY;
 ALTER TABLE server_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE giveaways ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_music_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE server_music_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE server_playlists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE music_activity_log ENABLE ROW LEVEL SECURITY;
