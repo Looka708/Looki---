@@ -1,4 +1,4 @@
-const supabase = require('../utils/supabase');
+const { supabase } = require('../utils/supabase');
 
 class ServerMusicSettings {
   static async getSettings(guildId) {

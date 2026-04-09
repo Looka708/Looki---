@@ -1,4 +1,4 @@
-const supabase = require('../utils/supabase');
+const { supabase } = require('../utils/supabase');
 
 class TemporaryBan {
   static async createTempBan(guildId, userId, endTime, reason, bannedBy) {

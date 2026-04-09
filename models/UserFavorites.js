@@ -1,4 +1,4 @@
-const supabase = require('../utils/supabase');
+const { supabase } = require('../utils/supabase');
 
 class UserFavorites {
   static async addFavorite(userId, songData) {
@@ -15,7 +15,7 @@ class UserFavorites {
         .select();
 
       if (error) throw error;
-      
+
       // Update stats
       await this.incrementStats(userId, songData);
       return data?.[0];

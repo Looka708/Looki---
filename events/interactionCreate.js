@@ -12,7 +12,7 @@ module.exports = {
       const expirationTime = interactionCooldowns.get(interaction.user.id) + cooldownAmount;
       if (Date.now() < expirationTime) {
         const timeLeft = (expirationTime - Date.now()) / 1000;
-        return interaction.reply({ content: `🥺 Please wait ${timeLeft.toFixed(1)} more second(s) before putting another command!`, ephemeral: true }).catch(() => {});
+        return interaction.reply({ content: `🥺 Please wait ${timeLeft.toFixed(1)} more second(s) before putting another command!`, ephemeral: true }).catch(() => { });
       }
     }
     interactionCooldowns.set(interaction.user.id, Date.now());
@@ -26,7 +26,7 @@ module.exports = {
         await command.execute(interaction, client);
       } catch (error) {
         console.error(`Error executing command ${interaction.commandName}:`, error);
-        
+
         const embed = new EmbedBuilder()
           .setColor(0xF4C2C2)
           .setTitle('❌ Error')
@@ -34,9 +34,9 @@ module.exports = {
           .setTimestamp();
 
         if (interaction.deferred || interaction.replied) {
-          await interaction.editReply({ embeds: [embed] }).catch(() => {});
+          await interaction.editReply({ embeds: [embed] }).catch(() => { });
         } else {
-          await interaction.reply({ embeds: [embed], ephemeral: true }).catch(() => {});
+          await interaction.reply({ embeds: [embed], ephemeral: true }).catch(() => { });
         }
       }
     } else if (interaction.isButton()) {
@@ -49,7 +49,7 @@ module.exports = {
 
 async function handleMusicButtons(interaction, client) {
   const { createEmbed } = require('../utils/embedBuilder');
-  
+
   const distubeQueue = client.distube.getQueue(interaction.guildId);
   const voiceChannel = interaction.member.voice.channel;
 
@@ -68,15 +68,17 @@ async function handleMusicButtons(interaction, client) {
     const isRequester = distubeQueue.songs[0].user?.tag === interaction.user.tag;
 
     if (!isAlone && !isMod && !isRequester) {
-      return interaction.reply({ 
-        content: '🥺 You must be a Moderator, alone, or the **Requester** of this song to do that!', 
-        ephemeral: true 
+      return interaction.reply({
+        content: '🥺 You must be a Moderator, alone, or the **Requester** of this song to do that!',
+        ephemeral: true
       });
     }
   }
 
   try {
-    await interaction.deferReply({ ephemeral: true });
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: true });
+    }
 
     switch (interaction.customId) {
       case 'music_pause_resume':
@@ -145,7 +147,7 @@ async function handleMusicButtons(interaction, client) {
         try {
           const currentSong = distubeQueue.songs[0];
           const isFavorited = await UserFavorites.isFavorite(interaction.user.id, currentSong.url);
-          
+
           if (isFavorited) {
             await UserFavorites.removeFavorite(interaction.user.id, currentSong.url);
             await interaction.editReply({ content: `💔 Removed **${currentSong.name}** from favorites` });
@@ -162,10 +164,9 @@ async function handleMusicButtons(interaction, client) {
   } catch (error) {
     console.error('Button Interaction Error:', error);
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: '❌ Failed to process that action.', ephemeral: true }).catch(() => {});
+      await interaction.reply({ content: '❌ Failed to process that action.', ephemeral: true }).catch(() => { });
     } else {
-      await interaction.editReply({ content: '❌ Failed to process that action.' }).catch(() => {});
+      await interaction.editReply({ content: '❌ Failed to process that action.' }).catch(() => { });
     }
   }
-}
 }

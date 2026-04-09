@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
-const supabase = require('../../utils/supabase');
+const { supabase } = require('../../utils/supabase');
 
 module.exports = {
   data: new SlashCommandBuilder()

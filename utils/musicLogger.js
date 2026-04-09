@@ -1,4 +1,4 @@
-const supabase = require('./supabase');
+const { supabase } = require('./supabase');
 
 class MusicLogger {
   static ERROR_TYPES = {
