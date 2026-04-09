@@ -63,8 +63,6 @@ client.distube = new DisTube(client, {
         path: ffmpeg
     },
     emitNewSongOnly: true,
-    leaveOnEmpty: true,
-    leaveOnFinish: false, // Keep queue logic stable
     nsfw: true,
     plugins: [
         new YouTubePlugin(),
