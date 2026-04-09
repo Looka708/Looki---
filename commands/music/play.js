@@ -13,15 +13,23 @@ module.exports = {
     ),
 
   execute: async (interaction, client) => {
-    if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
+    try {
+      if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
+    } catch (e) {
+      console.error('Failed to defer reply (likely token expired):', e);
+      return; 
+    }
 
     const voiceChannel = interaction.member?.voice?.channel;
     if (!voiceChannel) {
-      return interaction.editReply({
-        embeds: [createEmbed('error', client)
-          .setTitle('🥺 Join a Voice Channel')
-          .setDescription('You must be in a voice channel to use music commands! 🎀')]
-      });
+      if (interaction.deferred || interaction.replied) {
+        return interaction.editReply({
+          embeds: [createEmbed('error', client)
+            .setTitle('🥺 Join a Voice Channel')
+            .setDescription('You must be in a voice channel to use music commands! 🎀')]
+        });
+      }
+      return;
     }
 
     try {

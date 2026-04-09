@@ -16,10 +16,14 @@ module.exports = {
           .setTitle('🥺 Command Error')
           .setDescription('There was an error while executing this command! 🎀');
           
-        if (interaction.replied || interaction.deferred) {
-          await interaction.editReply({ embeds: [errorEmbed], ephemeral: true });
-        } else {
-          await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        try {
+          if (interaction.replied || interaction.deferred) {
+            await interaction.editReply({ embeds: [errorEmbed], ephemeral: true });
+          } else {
+            await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+          }
+        } catch (e) {
+          console.error('Failed to send error response (likely token expired):', e);
         }
       }
     } else if (interaction.isButton()) {
