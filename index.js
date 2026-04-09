@@ -45,10 +45,20 @@ const client = new Client({
 // 🌸 YouTube Cookie Loading
 let youtubeCookies = [];
 try {
-  const cookiePath = path.join(__dirname, 'cookies.txt');
-  if (fs.existsSync(cookiePath)) {
+  const cookieFiles = ['www.youtube.com_cookies.txt', 'cookies.txt', 'Cookies.txt'];
+  let cookiePath = null;
+  
+  for (const file of cookieFiles) {
+    const fullPath = path.join(__dirname, file);
+    if (fs.existsSync(fullPath)) {
+      cookiePath = fullPath;
+      break;
+    }
+  }
+
+  if (cookiePath) {
     youtubeCookies = parseCookies(cookiePath);
-    console.log(`🌸 [System] Loaded ${youtubeCookies.length} YouTube cookies from cookies.txt`);
+    console.log(`🌸 [System] Loaded ${youtubeCookies.length} YouTube cookies from ${path.basename(cookiePath)}`);
   } else if (process.env.YOUTUBE_COOKIE) {
     youtubeCookies = parseCookies(process.env.YOUTUBE_COOKIE);
     console.log(`🌸 [System] Loaded YouTube cookies from environment variable`);
