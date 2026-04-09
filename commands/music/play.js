@@ -27,6 +27,13 @@ module.exports = {
     try {
       const query = interaction.options.getString('query');
       const node = client.shoukaku.getIdealNode();
+      if (!node) {
+        return interaction.editReply({
+          embeds: [createEmbed('error', client)
+            .setTitle('🥺 Lavalink Not Ready')
+            .setDescription('No music nodes are currently available. Please wait a moment or check the console for connection errors. 🎀')]
+        });
+      }
       
       await interaction.editReply({
         embeds: [createEmbed('music', client).setDescription(`🌸 Searching for your request... ✨`)]
