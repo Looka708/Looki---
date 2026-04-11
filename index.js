@@ -6,6 +6,7 @@ const axios = require('axios');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { DisTube } = require('distube');
 const { YouTubePlugin } = require('@distube/youtube');
+const { YtDlpPlugin } = require('@distube/yt-dlp');
 const { SpotifyPlugin } = require('@distube/spotify');
 const { SoundCloudPlugin } = require('@distube/soundcloud');
 const ffmpeg = require('ffmpeg-static');
@@ -66,16 +67,12 @@ client.distube = new DisTube(client, {
                 highWaterMark: 1 << 25,
                 filter: 'audioonly',
                 quality: 'highestaudio',
-                dlChunkSize: 0,
-                requestOptions: {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Referer': 'https://www.youtube.com/',
-                        'Origin': 'https://www.youtube.com/'
-                    }
-                }
+                dlChunkSize: 0
             }
+        }),
+        new YtDlpPlugin({
+            update: true,
+            cookies: cookiePath || undefined
         }),
         new SpotifyPlugin(),
         new SoundCloudPlugin()
