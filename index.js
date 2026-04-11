@@ -11,7 +11,7 @@ const { SoundCloudPlugin } = require('@distube/soundcloud');
 const ffmpeg = require('ffmpeg-static');
 const { initializeTables } = require('./utils/supabase');
 const { handleDistubeEvents } = require('./utils/audioPlayer');
-const { parseCookies } = require('./utils/youtube');
+const { parseCookies, getCookiePath } = require('./utils/youtube');
 
 // ── Global Error Handling to Prevent Crashes ───────────
 process.on('unhandledRejection', (reason, promise) => {
@@ -43,30 +43,11 @@ const client = new Client({
 });
 
 // 🌸 YouTube Cookie Loading
-let youtubeCookies = [];
-let cookiePath = null;
-try {
-  const cookieFiles = ['www.youtube.com_cookies.txt', 'cookies.txt', 'Cookies.txt'];
-  
-  for (const file of cookieFiles) {
-    const fullPath = path.join(__dirname, file);
-    if (fs.existsSync(fullPath)) {
-      cookiePath = fullPath;
-      break;
-    }
-  }
-
-  if (cookiePath) {
-    youtubeCookies = parseCookies(cookiePath);
-    console.log(`🌸 [System] Loaded ${youtubeCookies.length} YouTube cookies from ${path.basename(cookiePath)}`);
-  } else if (process.env.YOUTUBE_COOKIE) {
-    youtubeCookies = parseCookies(process.env.YOUTUBE_COOKIE);
-    console.log(`🌸 [System] Loaded YouTube cookies from environment variable`);
-  } else {
-    console.log('🥺 [System] No YouTube cookies found. Using default session (risk of bot detection).');
-  }
-} catch (error) {
-  console.error('❌ [System] Error loading YouTube cookies:', error.message);
+const cookiePath = getCookiePath();
+if (cookiePath) {
+  console.log(`🌸 [System] Found YouTube cookies at ${path.basename(cookiePath)}`);
+} else {
+  console.log('🥺 [System] No YouTube cookies found. Using default session (risk of bot detection).');
 }
 
 // 🌸 DisTube Initialization
@@ -78,8 +59,7 @@ client.distube = new DisTube(client, {
     nsfw: true,
     plugins: [
         new YouTubePlugin({
-            // Pass the parsed array if available, otherwise undefined
-            cookies: youtubeCookies.length > 0 ? youtubeCookies : undefined,
+            cookies: cookiePath || undefined,
             ytdlOptions: {
                 highWaterMark: 1 << 25,
                 filter: 'audioonly',

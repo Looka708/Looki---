@@ -13,11 +13,14 @@ module.exports = {
     ),
 
   execute: async (interaction, client) => {
+    // 🌸 Defer reply immediately within the 3s window
     try {
-      if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply();
+      }
     } catch (e) {
-      console.error('Failed to defer reply (likely token expired):', e);
-      return; 
+      console.error('🥺 [Play] Failed to defer:', e.message);
+      return;
     }
 
     const voiceChannel = interaction.member?.voice?.channel;

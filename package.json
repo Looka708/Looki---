@@ -15,6 +15,7 @@
     "@distube/soundcloud": "^2.0.4",
     "@distube/spotify": "^2.0.2",
     "@distube/youtube": "^1.0.4",
+    "@distube/yt-dlp": "^2.0.1",
     "@emnapi/core": "^1.9.2",
     "@emnapi/runtime": "^1.9.2",
     "@supabase/supabase-js": "^2.38.4",

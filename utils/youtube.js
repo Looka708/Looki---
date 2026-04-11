@@ -162,11 +162,21 @@ async function getYouTubeSearch(query) {
     };
 }
 
+function getCookiePath() {
+    const cookieFiles = ['www.youtube.com_cookies.txt', 'cookies.txt', 'Cookies.txt'];
+    for (const file of cookieFiles) {
+        const fullPath = path.join(__dirname, '..', file);
+        if (fs.existsSync(fullPath)) return fullPath;
+    }
+    return null;
+}
+
 module.exports = { 
     getYouTubeClient, 
     getRobustYouTubeStream, 
     getRobustYouTubeInfo, 
     getYouTubeSearch, 
     parseCookies,
-    cookiesToString
+    cookiesToString,
+    getCookiePath
 };
