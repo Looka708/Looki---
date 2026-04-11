@@ -61,6 +61,10 @@ client.distube = new DisTube(client, {
     emitNewSongOnly: true,
     nsfw: true,
     plugins: [
+        new YtDlpPlugin({
+            update: true,
+            cookies: cookiePath || undefined
+        }),
         new YouTubePlugin({
             cookies: youtubeCookies.length > 0 ? youtubeCookies : undefined,
             ytdlOptions: {
@@ -69,10 +73,6 @@ client.distube = new DisTube(client, {
                 quality: 'highestaudio',
                 dlChunkSize: 0
             }
-        }),
-        new YtDlpPlugin({
-            update: true,
-            cookies: cookiePath || undefined
         }),
         new SpotifyPlugin(),
         new SoundCloudPlugin()
