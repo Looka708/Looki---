@@ -35,13 +35,14 @@ function parseCookies(input) {
             const parts = line.split('\t');
             if (parts.length >= 7) {
                 const domain = parts[0].trim();
+                // Keep the domain as is (including leading dot if present)
                 if (domain.includes('youtube.com') || domain.includes('google.com')) {
                     return {
                         name: parts[5].trim(),
                         value: parts[6].trim(),
-                        domain: parts[0].trim().replace(/^\./, ''),
+                        domain: domain,
                         path: parts[2].trim(),
-                        secure: parts[3].trim() === 'TRUE',
+                        secure: parts[3].trim().toUpperCase() === 'TRUE',
                         expires: parseInt(parts[4].trim())
                     };
                 }

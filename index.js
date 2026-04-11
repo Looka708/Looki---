@@ -44,8 +44,10 @@ const client = new Client({
 
 // 🌸 YouTube Cookie Loading
 const cookiePath = getCookiePath();
+let youtubeCookies = [];
 if (cookiePath) {
-  console.log(`🌸 [System] Found YouTube cookies at ${path.basename(cookiePath)}`);
+  youtubeCookies = parseCookies(cookiePath);
+  console.log(`🌸 [System] Loaded ${youtubeCookies.length} YouTube cookies from ${path.basename(cookiePath)}`);
 } else {
   console.log('🥺 [System] No YouTube cookies found. Using default session (risk of bot detection).');
 }
@@ -59,7 +61,7 @@ client.distube = new DisTube(client, {
     nsfw: true,
     plugins: [
         new YouTubePlugin({
-            cookies: cookiePath || undefined,
+            cookies: youtubeCookies.length > 0 ? youtubeCookies : undefined,
             ytdlOptions: {
                 highWaterMark: 1 << 25,
                 filter: 'audioonly',
