@@ -57,8 +57,12 @@ function parseCookies(input) {
 }
 
 function cookiesToString(cookies) {
-    if (!Array.isArray(cookies)) return cookies;
-    return cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    if (!cookies) return '';
+    if (typeof cookies === 'string') return cookies;
+    if (Array.isArray(cookies)) {
+        return cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    }
+    return '';
 }
 
 async function getYouTubeClient(forceNew = false) {
@@ -86,7 +90,7 @@ async function getYouTubeClient(forceNew = false) {
         });
 
         console.log(cookieString 
-            ? '🌸 [YouTube] Client ready with cookies'
+            ? `🌸 [YouTube] Client ready with ${cookies.length} cookies`
             : '🥺 [YouTube] Client ready WITHOUT cookies'
         );
     }

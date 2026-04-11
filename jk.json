@@ -1,0 +1,173 @@
+{
+  "$schema": "https://obsproject.com/schema/scene-collection.json",
+  "name": "Gaming — LZMU",
+  "globals": {
+    "canvas_width": 1920,
+    "canvas_height": 1080
+  },
+  "sources": [
+    {
+      "id": "game_capture",
+      "name": "Game Capture",
+      "type": "game_capture",
+      "settings": {
+        "capture_mode": "any_fullscreen",
+        "allow_transparency": true,
+        "capture_cursor": true,
+        "sli_compatibility": false,
+        "limit_framerate": false
+      },
+      "filters": [],
+      "mixers": 1
+    },
+    {
+      "id": "wasapi_input_capture_mic",
+      "name": "Mic/Aux",
+      "type": "wasapi_input_capture",
+      "settings": {
+        "device_id": "default",
+        "use_device_timing": false
+      },
+      "filters": [
+        {
+          "id": "noise_suppress",
+          "type": "filter_noise_suppress",
+          "name": "Noise Suppression",
+          "enabled": true,
+          "settings": {
+            "method": "rnnoise",
+            "suppress_level": -30
+          }
+        },
+        {
+          "id": "noise_gate",
+          "type": "filter_noise_gate",
+          "name": "Noise Gate",
+          "enabled": true,
+          "settings": {
+            "open_threshold": -26,
+            "close_threshold": -32,
+            "attack_time": 25,
+            "hold_time": 200,
+            "release_time": 150
+          }
+        },
+        {
+          "id": "gain",
+          "type": "filter_gain",
+          "name": "Gain",
+          "enabled": true,
+          "settings": {
+            "db": 0
+          }
+        },
+        {
+          "id": "compressor",
+          "type": "filter_compressor",
+          "name": "Compressor",
+          "enabled": true,
+          "settings": {
+            "ratio": 4,
+            "threshold": -18,
+            "attack_time": 6,
+            "release_time": 60,
+            "output_gain": 0
+          }
+        },
+        {
+          "id": "limiter",
+          "type": "filter_limiter",
+          "name": "Limiter",
+          "enabled": true,
+          "settings": {
+            "threshold": -1,
+            "release_time": 60
+          }
+        }
+      ],
+      "monitoring_type": 0,
+      "mixers": 1,
+      "audio_tracks": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "wasapi_output_capture_game",
+      "name": "Game Audio",
+      "type": "wasapi_output_capture",
+      "settings": {
+        "device_id": "default",
+        "use_device_timing": false
+      },
+      "filters": [],
+      "monitoring_type": 0,
+      "mixers": 1,
+      "audio_tracks": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "browser_source_bongo_cat",
+      "name": "Bongo Cat",
+      "type": "browser_source",
+      "settings": {
+        "url": "http://localhost:1234",
+        "width": 300,
+        "height": 200,
+        "fps": 60,
+        "shutdown": false,
+        "restart_when_active": false,
+        "css": "body { background: transparent !important; margin: 0; overflow: hidden; }"
+      },
+      "filters": []
+    }
+  ],
+  "scene_order": [
+    {
+      "name": "Gaming"
+    }
+  ],
+  "scenes": [
+    {
+      "name": "Gaming",
+      "sources": [
+        {
+          "name": "Game Capture",
+          "visible": true,
+          "pos": {
+            "x": 0,
+            "y": 0
+          },
+          "bounds": {
+            "x": 1920,
+            "y": 1080
+          },
+          "bounds_type": "OBS_BOUNDS_STRETCH"
+        },
+        {
+          "name": "Bongo Cat",
+          "visible": true,
+          "pos": {
+            "x": 1600,
+            "y": 860
+          },
+          "bounds": {
+            "x": 300,
+            "y": 200
+          },
+          "bounds_type": "OBS_BOUNDS_NONE"
+        }
+      ]
+    }
+  ]
+}

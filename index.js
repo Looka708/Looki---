@@ -44,9 +44,9 @@ const client = new Client({
 
 // 🌸 YouTube Cookie Loading
 let youtubeCookies = [];
+let cookiePath = null;
 try {
   const cookieFiles = ['www.youtube.com_cookies.txt', 'cookies.txt', 'Cookies.txt'];
-  let cookiePath = null;
   
   for (const file of cookieFiles) {
     const fullPath = path.join(__dirname, file);
@@ -78,6 +78,7 @@ client.distube = new DisTube(client, {
     nsfw: true,
     plugins: [
         new YouTubePlugin({
+            // Pass the parsed array if available, otherwise undefined
             cookies: youtubeCookies.length > 0 ? youtubeCookies : undefined,
             ytdlOptions: {
                 highWaterMark: 1 << 25,
@@ -86,7 +87,10 @@ client.distube = new DisTube(client, {
                 dlChunkSize: 0,
                 requestOptions: {
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Referer': 'https://www.youtube.com/',
+                        'Origin': 'https://www.youtube.com/'
                     }
                 }
             }
