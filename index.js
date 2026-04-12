@@ -57,9 +57,23 @@ if (cookiePath) {
   console.log('🥺 [System] No YouTube cookies found. Using default session (risk of bot detection).');
 }
 
-// 🌸 DisTube Initialization
-// Plugin order matters! YouTubePlugin handles YT URLs with cookies first.
-// YtDlpPlugin is last as a fallback for non-YouTube sources.
+// 🌸 YtDlpPlugin Patch (Handles search queries correctly without intercepting Spotify/SoundCloud)
+const customYtDlpPlugin = new YtDlpPlugin({ update: true });
+const ogValidate = customYtDlpPlugin.validate.bind(customYtDlpPlugin);
+customYtDlpPlugin.validate = (query) => {
+    if (typeof query === 'string' && (query.includes('spotify.com') || query.includes('soundcloud.com'))) return false;
+    return ogValidate(query);
+};
+const ogResolve = customYtDlpPlugin.resolve.bind(customYtDlpPlugin);
+customYtDlpPlugin.resolve = async (query, options) => {
+    let finalQuery = query;
+    if (typeof query === 'string' && !query.startsWith('http') && !query.startsWith('ytsearch:')) {
+        finalQuery = 'ytsearch:' + query;
+    }
+    return ogResolve(finalQuery, options);
+};
+
+// Plugin order matters! 
 client.distube = new DisTube(client, {
     ffmpeg: {
         path: ffmpeg
@@ -67,12 +81,9 @@ client.distube = new DisTube(client, {
     emitNewSongOnly: true,
     nsfw: true,
     plugins: [
-        new YtDlpPlugin({
-            update: true,
-            cookies: cookiePath || undefined
-        }),
         new SpotifyPlugin(),
-        new SoundCloudPlugin()
+        new SoundCloudPlugin(),
+        customYtDlpPlugin
     ]
 });
 
