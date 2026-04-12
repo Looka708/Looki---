@@ -67,21 +67,12 @@ client.distube = new DisTube(client, {
     emitNewSongOnly: true,
     nsfw: true,
     plugins: [
-        new YouTubePlugin({
-            cookies: youtubeCookies.length > 0 ? youtubeCookies : undefined,
-            ytdlOptions: {
-                highWaterMark: 1 << 25,
-                filter: 'audioonly',
-                quality: 'highestaudio',
-                dlChunkSize: 0
-            }
-        }),
-        new SpotifyPlugin(),
-        new SoundCloudPlugin(),
         new YtDlpPlugin({
             update: true,
             cookies: cookiePath || undefined
-        })
+        }),
+        new SpotifyPlugin(),
+        new SoundCloudPlugin()
     ]
 });
 
