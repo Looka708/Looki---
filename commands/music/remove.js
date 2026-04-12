@@ -24,25 +24,36 @@ module.exports = {
         });
       }
 
-      const player = client.riffy.players.get(interaction.guildId);
+      const player = client.kazagumo.players.get(interaction.guildId);
 
-      if (!player || !player.current) {
+      if (!player || !player.queue.current) {
         return await interaction.reply({
           content: '❌ No music is currently playing!',
           ephemeral: true
         });
       }
 
-      if (voiceChannel.id !== player.voiceChannel) {
+      if (voiceChannel.id !== player.voiceId) {
         return await interaction.reply({
           content: '🥺 You must be in the same voice channel as Looki!',
           ephemeral: true
         });
       }
 
+      // In Kazagumo, the queue index is 0-based
+      const index = position - 1;
+      const trackToRemove = player.queue[index];
+
+      if (!trackToRemove) {
+        return await interaction.reply({
+          content: `❌ Invalid position! Queue has **${player.queue.length}** songs.`,
+          ephemeral: true
+        });
+      }
+
       // Permission check
       const isMod = interaction.member.permissions.has('ManageChannels');
-      const isRequester = player.queue[position - 1]?.info.requester?.tag === interaction.user.tag;
+      const isRequester = trackToRemove.requester?.id === interaction.user.id;
 
       if (!isMod && !isRequester) {
         return await interaction.reply({
@@ -51,20 +62,12 @@ module.exports = {
         });
       }
 
-      if (position < 1 || position > player.queue.length) {
-        return await interaction.reply({
-          content: `❌ Invalid position! Queue has **${player.queue.length}** songs.`,
-          ephemeral: true
-        });
-      }
-
-      const removedSong = [...player.queue][position - 1];
-      player.queue.remove(position - 1);
+      const removedSong = player.queue.remove(index);
 
       await interaction.reply({
         embeds: [createEmbed('music', client)
           .setTitle('🗑️ Song Removed')
-          .setDescription(`Removed **${removedSong.info.title}** from position **#${position}**`)]
+          .setDescription(`Removed **${removedSong.title}** from position **#${position}**`)]
       });
     } catch (error) {
       console.error('Error in remove command:', error);

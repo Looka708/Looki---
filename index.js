@@ -58,16 +58,22 @@ const client = new Client({
 // ── Lavalink Nodes ──────────────────────────────────────
 const nodes = [
   {
+    name: 'Lexis',
+    url: process.env.LAVALINK_LEXIS_URL || 'lavalink.lexis.host:443',
+    auth: process.env.LAVALINK_LEXIS_PWD || 'lexisnodenew',
+    secure: process.env.LAVALINK_LEXIS_SECURE === 'true',
+  },
+  {
     name: 'Jirayu',
-    url: 'lavalink.jirayu.net:13592',
-    auth: 'youshallnotpass',
-    secure: false,
+    url: process.env.LAVALINK_JIRAYU_URL || 'lavalink.jirayu.net:443',
+    auth: process.env.LAVALINK_JIRAYU_PWD || 'youshallnotpass',
+    secure: process.env.LAVALINK_JIRAYU_SECURE === 'true',
   },
   {
     name: 'Serenetia',
-    url: 'lavalinkv4.serenetia.com:443',
-    auth: 'https://dsc.gg/ajidevserver',
-    secure: true,
+    url: process.env.LAVALINK_SERENETIA_URL || 'lavalinkv4.serenetia.com:443',
+    auth: process.env.LAVALINK_SERENETIA_PWD || 'https://seretia.link/discord',
+    secure: process.env.LAVALINK_SERENETIA_SECURE === 'true',
   },
 ];
 

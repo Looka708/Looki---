@@ -58,7 +58,7 @@ module.exports = {
       let player = client.kazagumo.players.get(interaction.guildId);
       if (!player) {
          player = await safeJoin(client.kazagumo, interaction.guildId, voiceChannel.id, interaction.guild.shardId);
-         player.setTextChannel(interaction.channelId);
+         player.textId = interaction.channelId;
       }
 
       if (resolve.type === 'PLAYLIST') {
