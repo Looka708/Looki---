@@ -69,12 +69,6 @@ const nodes = [
     auth: 'https://dsc.gg/ajidevserver',
     secure: true,
   },
-  {
-    name: 'NextGenCoders',
-    url: 'lavalink.nextgencoders.xyz:443',
-    auth: 'nextgencoderspvt',
-    secure: true,
-  },
 ];
 
 // ── Kazagumo Init ──────────────────────────────────────────
