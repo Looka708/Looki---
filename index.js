@@ -9,7 +9,13 @@ const { Kazagumo, Plugins } = require('kazagumo');
 const { Connectors } = require('shoukaku');
 const { handleKazagumoEvents } = require('./utils/audioPlayer');
 
-// ── Global Error Handling ───────────────────────────────
+// ── Connectivity Test ────────────────────────────────────
+const https = require('https');
+https.get('https://lavalink.jirayu.net', (res) => {
+  console.log('✅ [Connectivity] Jirayu reachable, status:', res.statusCode);
+}).on('error', (e) => {
+  console.error('❌ [Connectivity] Cannot reach Jirayu from this environment:', e.message);
+});
 process.on('unhandledRejection', (reason, promise) => {
   console.error('🥺 [Anti-Crash] Unhandled Rejection:', promise, 'reason:', reason);
 });
@@ -58,22 +64,22 @@ const client = new Client({
 // ── Lavalink Nodes ──────────────────────────────────────
 const nodes = [
   {
-    name: 'Lexis',
-    url: process.env.LAVALINK_LEXIS_URL || 'lavalink.lexis.host:443',
-    auth: process.env.LAVALINK_LEXIS_PWD || 'lexisnodenew',
-    secure: process.env.LAVALINK_LEXIS_SECURE === 'true',
-  },
-  {
     name: 'Jirayu',
-    url: process.env.LAVALINK_JIRAYU_URL || 'lavalink.jirayu.net:443',
-    auth: process.env.LAVALINK_JIRAYU_PWD || 'youshallnotpass',
-    secure: process.env.LAVALINK_JIRAYU_SECURE === 'true',
+    url: 'lavalink.jirayu.net:443',
+    auth: 'youshallnotpass',
+    secure: true,
   },
   {
     name: 'Serenetia',
-    url: process.env.LAVALINK_SERENETIA_URL || 'lavalinkv4.serenetia.com:443',
-    auth: process.env.LAVALINK_SERENETIA_PWD || 'https://seretia.link/discord',
-    secure: process.env.LAVALINK_SERENETIA_SECURE === 'true',
+    url: 'lavalinkv4.serenetia.com:443',
+    auth: 'https://dsc.gg/ajidevserver',
+    secure: true,
+  },
+  {
+    name: 'G3V',
+    url: 'lava.g3v.co.uk:9008',
+    auth: 'lavalinklol',
+    secure: false,
   },
 ];
 
@@ -87,7 +93,13 @@ client.kazagumo = new Kazagumo({
     const guild = client.guilds.cache.get(guildId);
     if (guild) guild.shard.send(payload);
   }
-}, new Connectors.DiscordJS(client), nodes);
+}, new Connectors.DiscordJS(client), nodes, {
+  moveOnDisconnect: false,
+  resumable: false,
+  reconnectTries: 3,
+  reconnectInterval: 5000,
+  restTimeout: 10000,
+});
 
 // Initialize Kazagumo Events
 handleKazagumoEvents(client);
