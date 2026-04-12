@@ -1,7 +1,7 @@
 const TemporaryBan = require('../models/TemporaryBan');
 
 module.exports = {
-  name: 'clientReady',
+  name: 'ready',
   once: true,
   async execute(client) {
     console.log('✦ Looki is online! 🌸');
