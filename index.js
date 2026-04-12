@@ -25,6 +25,25 @@ const server = http.createServer((req, res) => {
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log(`🌸 Heartbeat server listening on port ${PORT}`);
+
+  // ── Keep-Alive Ping (SELF_URL)
+  const SELF_URL = process.env.SELF_URL;
+  if (SELF_URL) {
+    // Initial ping
+    axios.get(SELF_URL)
+      .then(() => console.log(`🌸 [Keep-Alive] Initial ping successful: ${SELF_URL}`))
+      .catch(err => console.error(`❌ [Keep-Alive] Initial ping failed: ${err.message}`));
+
+    // Periodic ping every 5 minutes
+    setInterval(async () => {
+      try {
+        await axios.get(SELF_URL);
+        console.log(`🌸 [Keep-Alive] Periodic ping successful: ${SELF_URL}`);
+      } catch (error) {
+        console.error(`❌ [Keep-Alive] Periodic ping failed: ${error.message}`);
+      }
+    }, 5 * 60 * 1000);
+  }
 });
 
 const client = new Client({
