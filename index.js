@@ -8,7 +8,7 @@ const { Riffy } = require('riffy');
 const { initializeTables } = require('./utils/supabase');
 const { handleRiffyEvents } = require('./utils/audioPlayer');
 
-// ── Global Error Handling to Prevent Crashes ───────────
+// ── Global Error Handling ───────────────────────────────
 process.on('unhandledRejection', (reason, promise) => {
   console.error('🥺 [Anti-Crash] Unhandled Rejection:', promise, 'reason:', reason);
 });
@@ -16,7 +16,7 @@ process.on('uncaughtException', (err) => {
   console.error('🥺 [Anti-Crash] Uncaught Exception:', err);
 });
 
-// ── Heartbeat Server
+// ── Heartbeat Server ────────────────────────────────────
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('Looki Bot is awake and flourishing 🌸\n');
@@ -26,15 +26,12 @@ const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log(`🌸 Heartbeat server listening on port ${PORT}`);
 
-  // ── Keep-Alive Ping (SELF_URL)
   const SELF_URL = process.env.SELF_URL;
   if (SELF_URL) {
-    // Initial ping
     axios.get(SELF_URL)
       .then(() => console.log(`🌸 [Keep-Alive] Initial ping successful: ${SELF_URL}`))
       .catch(err => console.error(`❌ [Keep-Alive] Initial ping failed: ${err.message}`));
 
-    // Periodic ping every 5 minutes
     setInterval(async () => {
       try {
         await axios.get(SELF_URL);
@@ -46,6 +43,7 @@ server.listen(PORT, () => {
   }
 });
 
+// ── Discord Client ──────────────────────────────────────
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -56,53 +54,54 @@ const client = new Client({
   ],
 });
 
-// 🌸 Initialize Riffy ───────────
+// ── Lavalink Nodes ──────────────────────────────────────
 const nodes = [
   {
-    name: 'Lexis',
-    host: process.env.LAVALINK_LEXIS_URL?.split(':')[0] || 'lavalink.lexis.host',
-    port: parseInt(process.env.LAVALINK_LEXIS_URL?.split(':')[1] || 443),
-    password: process.env.LAVALINK_LEXIS_PWD || 'lexisnodenew',
-    secure: process.env.LAVALINK_LEXIS_SECURE === 'true' || true,
-  },
-  {
     name: 'Jirayu',
-    host: process.env.LAVALINK_JIRAYU_URL?.split(':')[0] || 'lavalink.jirayu.net',
-    port: parseInt(process.env.LAVALINK_JIRAYU_URL?.split(':')[1] || 443),
-    password: process.env.LAVALINK_JIRAYU_PWD || 'youshallnotpass',
-    secure: process.env.LAVALINK_JIRAYU_SECURE === 'true' || true,
+    host: 'lavalink.jirayu.net',
+    port: 13592,
+    password: 'youshallnotpass',
+    secure: false,
   },
   {
     name: 'Serenetia',
-    host: process.env.LAVALINK_SERENETIA_URL?.split(':')[0] || 'lavalinkv4.serenetia.com',
-    port: parseInt(process.env.LAVALINK_SERENETIA_URL?.split(':')[1] || 443),
-    password: process.env.LAVALINK_SERENETIA_PWD || 'https://seretia.link/discord',
-    secure: process.env.LAVALINK_SERENETIA_SECURE === 'true' || true,
+    host: 'lavalinkv4.serenetia.com',
+    port: 443,
+    password: 'https://dsc.gg/ajidevserver',
+    secure: true,
+  },
+  {
+    name: 'NextGenCoders',
+    host: 'lavalink.nextgencoders.xyz',
+    port: 443,
+    password: 'nextgencoderspvt',
+    secure: true,
   },
 ];
 
-
-
+// ── Riffy Init ──────────────────────────────────────────
 client.riffy = new Riffy(client, nodes, {
   send: (payload) => {
     const guild = client.guilds.cache.get(payload.d.guild_id);
     if (guild) guild.shard.send(payload);
   },
-  defaultSearchPlatform: "ytsearch", // Changed from ytmsearch to ytsearch for better results
-  restVersion: "v4"
+  defaultSearchPlatform: 'ytsearch',
+  restVersion: 'v4',
+  reconnectTries: 5,
+  reconnectTimeout: 5000,
 });
 
 // Bind Discord voice state updates to Riffy
-client.on("raw", (d) => client.riffy.updateVoiceState(d));
+client.on('raw', (d) => client.riffy.updateVoiceState(d));
 
 // Initialize Riffy Events
 handleRiffyEvents(client);
 
-// Initialize command collection
+// ── Collections ─────────────────────────────────────────
 client.commands = new Collection();
 client.prefixCommands = new Collection();
 
-// Connect to Supabase
+// ── Database ─────────────────────────────────────────────
 async function connectDatabase() {
   try {
     await initializeTables();
@@ -113,13 +112,13 @@ async function connectDatabase() {
   }
 }
 
-// Load commands, events, etc.
+// ── Command Loader ───────────────────────────────────────
 function loadCommands() {
   const commandsPath = path.join(__dirname, 'commands');
   const categories = fs.readdirSync(commandsPath);
   categories.forEach((category) => {
     const categoryPath = path.join(commandsPath, category);
-    const commandFiles = fs.readdirSync(categoryPath).filter(file => file.endsWith('.js'));
+    const commandFiles = fs.readdirSync(categoryPath).filter(f => f.endsWith('.js'));
     commandFiles.forEach((file) => {
       const filePath = path.join(categoryPath, file);
       try {
@@ -140,9 +139,10 @@ function loadCommands() {
   console.log(`✦ Loaded ${client.commands.size} commands`);
 }
 
+// ── Event Loader ─────────────────────────────────────────
 function loadEvents() {
   const eventsPath = path.join(__dirname, 'events');
-  const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+  const eventFiles = fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'));
   eventFiles.forEach((file) => {
     const filePath = path.join(eventsPath, file);
     try {
@@ -159,6 +159,7 @@ function loadEvents() {
   console.log('✦ Event handlers loaded');
 }
 
+// ── Start ────────────────────────────────────────────────
 async function start() {
   try {
     const token = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
@@ -170,7 +171,7 @@ async function start() {
     loadCommands();
     loadEvents();
     await client.login(token);
-    client.riffy.init(client.user.id); // Initialize Riffy with bot's client ID
+    client.riffy.init(client.user.id);
   } catch (error) {
     console.error('❌ Bot startup error:', error);
     process.exit(1);
