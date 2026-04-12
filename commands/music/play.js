@@ -5,7 +5,7 @@ module.exports = {
   name: 'play',
   data: new SlashCommandBuilder()
     .setName('play')
-    .setDescription('Play a song from YouTube, Spotify or SoundCloud via DisTube 🎀')
+    .setDescription('Play a song from YouTube, Spotify or SoundCloud 🎀')
     .addStringOption(option =>
       option.setName('query')
         .setDescription('Song name, YouTube URL, or Spotify URL')
@@ -38,6 +38,12 @@ module.exports = {
     try {
       const query = interaction.options.getString('query');
       
+      if (!query || query.trim() === "") {
+        return interaction.editReply({
+          embeds: [createEmbed('error', client).setDescription(`🥺 Please provide a song name or URL to play! 🎀`)]
+        });
+      }
+      
       const player = client.riffy.createConnection({
         guildId: interaction.guildId,
         voiceChannel: voiceChannel.id,
@@ -51,9 +57,13 @@ module.exports = {
 
       const resolve = await client.riffy.resolve(query);
       
-      if (!resolve || resolve.loadType === 'empty') {
+      if (!resolve || resolve.loadType === 'empty' || resolve.loadType === 'error') {
+        const errorMsg = resolve?.loadType === 'error' 
+          ? `🥺 Lavalink encountered an error while searching for **${query}**.` 
+          : `🥺 I couldn't find any results for **${query}**! Try a different name.`;
+          
         return interaction.editReply({
-          embeds: [createEmbed('error', client).setDescription(`🥺 I couldn't find any results for **${query}**! Try a different name.`)]
+          embeds: [createEmbed('error', client).setDescription(errorMsg)]
         });
       }
 

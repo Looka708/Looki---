@@ -79,13 +79,6 @@ const nodes = [
     password: process.env.LAVALINK_SERENETIA_PWD || 'https://seretia.link/discord',
     secure: process.env.LAVALINK_SERENETIA_SECURE === 'true' || true,
   },
-  {
-    name: 'AneFaiz',
-    host: 'lava-v4.millohost.my.id',
-    port: 443,
-    password: 'https://discord.gg/mjS5J2K3ep',
-    secure: true,
-  }
 ];
 
 
@@ -95,8 +88,8 @@ client.riffy = new Riffy(client, nodes, {
     const guild = client.guilds.cache.get(payload.d.guild_id);
     if (guild) guild.shard.send(payload);
   },
-  defaultSearchPlatform: "ytmsearch",
-  restVersion: "v4" // Assuming Lavalink v4
+  defaultSearchPlatform: "ytsearch", // Changed from ytmsearch to ytsearch for better results
+  restVersion: "v4"
 });
 
 // Bind Discord voice state updates to Riffy
