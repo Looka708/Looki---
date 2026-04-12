@@ -40,27 +40,36 @@ const client = new Client({
 // 🌸 Initialize Riffy ───────────
 const nodes = [
   {
+    name: 'Lexis',
+    host: process.env.LAVALINK_LEXIS_URL?.split(':')[0] || 'lavalink.lexis.host',
+    port: parseInt(process.env.LAVALINK_LEXIS_URL?.split(':')[1] || 443),
+    password: process.env.LAVALINK_LEXIS_PWD || 'lexisnodenew',
+    secure: process.env.LAVALINK_LEXIS_SECURE === 'true' || true,
+  },
+  {
     name: 'Jirayu',
     host: process.env.LAVALINK_JIRAYU_URL?.split(':')[0] || 'lavalink.jirayu.net',
-    port: parseInt(process.env.LAVALINK_JIRAYU_URL?.split(':')[1] || 13592),
+    port: parseInt(process.env.LAVALINK_JIRAYU_URL?.split(':')[1] || 443),
     password: process.env.LAVALINK_JIRAYU_PWD || 'youshallnotpass',
-    secure: process.env.LAVALINK_JIRAYU_SECURE === 'true' || false,
+    secure: process.env.LAVALINK_JIRAYU_SECURE === 'true' || true,
   },
   {
     name: 'Serenetia',
     host: process.env.LAVALINK_SERENETIA_URL?.split(':')[0] || 'lavalinkv4.serenetia.com',
-    port: parseInt(process.env.LAVALINK_SERENETIA_URL?.split(':')[1] || 80),
-    password: process.env.LAVALINK_SERENETIA_PWD || 'https://dsc.gg/ajidevserver',
-    secure: process.env.LAVALINK_SERENETIA_SECURE === 'true' || false,
+    port: parseInt(process.env.LAVALINK_SERENETIA_URL?.split(':')[1] || 443),
+    password: process.env.LAVALINK_SERENETIA_PWD || 'https://seretia.link/discord',
+    secure: process.env.LAVALINK_SERENETIA_SECURE === 'true' || true,
   },
   {
-    name: 'SerenetiaSSL',
-    host: process.env.LAVALINK_SERENETIASSL_URL?.split(':')[0] || 'lavalinkv4.serenetia.com',
-    port: parseInt(process.env.LAVALINK_SERENETIASSL_URL?.split(':')[1] || 443),
-    password: process.env.LAVALINK_SERENETIASSL_PWD || 'https://dsc.gg/ajidevserver',
-    secure: process.env.LAVALINK_SERENETIASSL_SECURE === 'true' || true,
+    name: 'AneFaiz',
+    host: 'lava-v4.millohost.my.id',
+    port: 443,
+    password: 'https://discord.gg/mjS5J2K3ep',
+    secure: true,
   }
 ];
+
+
 
 client.riffy = new Riffy(client, nodes, {
   send: (payload) => {
