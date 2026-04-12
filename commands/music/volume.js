@@ -14,9 +14,9 @@ module.exports = {
         .setMaxValue(100)
     ),
   execute: async (interaction, client) => {
-    const queue = client.distube.getQueue(interaction.guildId);
+    const player = client.riffy.players.get(interaction.guildId);
 
-    if (!queue) {
+    if (!player) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('No music is currently playing! 🎀');
@@ -25,7 +25,7 @@ module.exports = {
 
     try {
       const amount = interaction.options.getInteger('amount');
-      queue.setVolume(amount);
+      player.setVolume(amount);
 
       const volEmbed = createEmbed('music', client)
         .setTitle('🔊 Volume Adjusted')

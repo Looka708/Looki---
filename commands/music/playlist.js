@@ -43,23 +43,22 @@ module.exports = {
           ephemeral: true
         });
       } else if (subcommand === 'add') {
-        const playlistName = interaction.options.getString('playlist');
-        const queue = client.music.queues.get(interaction.guildId);
+        const player = client.riffy.players.get(interaction.guildId);
 
-        if (!queue || queue.songs.length === 0) {
+        if (!player || !player.current) {
           return await interaction.reply({
             content: '❌ No music is currently playing!',
             ephemeral: true
           });
         }
 
-        const song = queue.songs[0];
+        const song = player.current;
         
         // TODO: Implement adding to playlist in database
         await interaction.reply({
           embeds: [createEmbed('music', client)
             .setTitle('➕ Added to Playlist')
-            .setDescription(`Added **${song.title}** to **${playlistName}**`)],
+            .setDescription(`Added **${song.info.title}** to **${playlistName}**`)],
           ephemeral: true
         });
       } else if (subcommand === 'list') {

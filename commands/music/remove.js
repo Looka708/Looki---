@@ -24,16 +24,16 @@ module.exports = {
         });
       }
 
-      const queue = client.distube.getQueue(interaction.guildId);
+      const player = client.riffy.players.get(interaction.guildId);
 
-      if (!queue || !queue.songs[0]) {
+      if (!player || !player.current) {
         return await interaction.reply({
           content: '❌ No music is currently playing!',
           ephemeral: true
         });
       }
 
-      if (voiceChannel.id !== queue.voiceChannel?.id) {
+      if (voiceChannel.id !== player.voiceChannel) {
         return await interaction.reply({
           content: '🥺 You must be in the same voice channel as Looki!',
           ephemeral: true
@@ -42,7 +42,7 @@ module.exports = {
 
       // Permission check
       const isMod = interaction.member.permissions.has('ManageChannels');
-      const isRequester = queue.songs[position - 1]?.user?.tag === interaction.user.tag;
+      const isRequester = player.queue[position - 1]?.info.requester?.tag === interaction.user.tag;
 
       if (!isMod && !isRequester) {
         return await interaction.reply({
@@ -51,20 +51,20 @@ module.exports = {
         });
       }
 
-      if (position < 1 || position > queue.songs.length) {
+      if (position < 1 || position > player.queue.length) {
         return await interaction.reply({
-          content: `❌ Invalid position! Queue has **${queue.songs.length - 1}** songs (excluding current).`,
+          content: `❌ Invalid position! Queue has **${player.queue.length}** songs.`,
           ephemeral: true
         });
       }
 
-      const removedSong = queue.songs[position - 1];
-      queue.songs.splice(position - 1, 1);
+      const removedSong = [...player.queue][position - 1];
+      player.queue.remove(position - 1);
 
       await interaction.reply({
         embeds: [createEmbed('music', client)
           .setTitle('🗑️ Song Removed')
-          .setDescription(`Removed **${removedSong.name}** from position **#${position}**`)]
+          .setDescription(`Removed **${removedSong.info.title}** from position **#${position}**`)]
       });
     } catch (error) {
       console.error('Error in remove command:', error);

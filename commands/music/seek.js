@@ -23,16 +23,16 @@ module.exports = {
         });
       }
 
-      const queue = client.distube.getQueue(interaction.guildId);
+      const player = client.riffy.players.get(interaction.guildId);
 
-      if (!queue || !queue.songs[0]) {
+      if (!player || !player.current) {
         return await interaction.reply({
           content: '❌ No music is currently playing!',
           ephemeral: true
         });
       }
 
-      if (voiceChannel.id !== queue.voiceChannel?.id) {
+      if (voiceChannel.id !== player.voiceChannel) {
         return await interaction.reply({
           content: '🥺 You must be in the same voice channel as Looki!',
           ephemeral: true
@@ -57,14 +57,14 @@ module.exports = {
         return await interaction.reply({ content: '❌ Invalid time format!', ephemeral: true });
       }
 
-      const currentSong = queue.songs[0];
-      const duration = currentSong.duration || 0;
+      const currentSong = player.current;
+      const duration = currentSong.info.length / 1000;
 
       if (seconds > duration) {
         return await interaction.reply({ content: '❌ Time exceeds song duration!', ephemeral: true });
       }
 
-      queue.seek(seconds);
+      player.seek(seconds * 1000);
       await interaction.reply({
         embeds: [createEmbed('music', client)
           .setTitle('⏱️ Seeked')

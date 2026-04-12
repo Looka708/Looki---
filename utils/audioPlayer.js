@@ -3,24 +3,42 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const MusicLogger = require('./musicLogger');
 const UserFavorites = require('../models/UserFavorites');
 
-function handleDistubeEvents(client) {
-  client.distube
-    .on('playSong', (queue, song) => {
+function handleRiffyEvents(client) {
+  client.riffy
+    .on('nodeConnect', (node) => {
+      console.log(`🌸 [Riffy] Node "${node.name}" connected!`);
+    })
+    .on('nodeError', (node, error) => {
+      console.error(`🥺 [Riffy] Node "${node.name}" error:`, error.message);
+    })
+    .on('trackStart', async (player, track) => {
       try {
+        const channel = client.channels.cache.get(player.textChannel);
+        if (!channel) return;
+
+        // In Riffy, user who requested is heavily attached manually or found via `player.queue`.
+        // Let's assume `track.info.requester` is set if we pass it, otherwise fallback.
+        const requesterTag = track.info.requester?.tag || 'Unknown User';
+
+        // Format duration from ms
+        const formattedDuration = track.info.length < 3600000 
+            ? new Date(track.info.length).toISOString().substr(14, 5) 
+            : new Date(track.info.length).toISOString().substr(11, 8);
+
         const playEmbed = createEmbed('music', client)
           .setAuthor({ 
             name: '🎀 Now Playing 🎀', 
             iconURL: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png' 
           })
-          .setTitle(`${song.name}`)
-          .setURL(song.url)
+          .setTitle(`${track.info.title}`)
+          .setURL(track.info.uri)
           .setColor(0xFFB6C1)
           .addFields(
-            { name: '🦋 Artist', value: `> **${song.uploader.name || 'Unknown'}**`, inline: true },
-            { name: '💖 Duration', value: `> **${song.formattedDuration}**`, inline: true },
-            { name: '🧸 Requested by', value: `> **${song.user.tag}**`, inline: true }
+            { name: '🦋 Artist', value: `> **${track.info.author || 'Unknown'}**`, inline: true },
+            { name: '💖 Duration', value: `> **${formattedDuration}**`, inline: true },
+            { name: '🧸 Requested by', value: `> **${requesterTag}**`, inline: true }
           )
-          .setImage(song.thumbnail)
+          .setImage(track.info.thumbnail || CATEGORY_GIFS?.music)
           .setThumbnail(CATEGORY_GIFS?.music || 'https://cdn.discordapp.com/attachments/1110915631720370216/1110915721839185970/Looki_Default.gif')
           .setFooter({ 
             text: `🎀 looki~ • ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`, 
@@ -43,123 +61,38 @@ function handleDistubeEvents(client) {
           new ButtonBuilder().setCustomId('music_like').setEmoji('🤍').setStyle(ButtonStyle.Secondary)
         );
 
-        queue.textChannel?.send({ embeds: [playEmbed], components: [row1, row2] }).catch(err => {
-          MusicLogger.logError('playSong - send', err, { guildId: queue.voiceChannel?.guild.id });
+        const message = await channel.send({ embeds: [playEmbed], components: [row1, row2] }).catch(err => {
+          MusicLogger.logError('trackStart - send', err, { guildId: player.guildId });
         });
-
-        MusicLogger.logSuccess('playSong', `Now playing ${song.name}`, { 
-          guildId: queue.voiceChannel?.guild.id,
-          requester: song.user?.tag 
-        });
-
-        // Log to activity
-        MusicLogger.logMusicActivity(queue.voiceChannel?.guild?.id, 'play', song);
-      } catch (error) {
-        MusicLogger.logError('playSong', error);
-      }
-    })
-
-    .on('addSong', (queue, song) => {
-      try {
-        const embed = createEmbed('music', client)
-          .setTitle('💖 Added to Queue')
-          .setDescription(`**[${song.name}](${song.url})** ✨`)
-          .addFields(
-            { name: '🧸 Requester', value: song.user.tag, inline: true },
-            { name: '🎀 Position', value: `#${queue.songs.length}`, inline: true }
-          );
-        if (song.thumbnail) embed.setThumbnail(song.thumbnail);
+        player.messageId = message?.id; // Optional: To delete later
         
-        queue.textChannel?.send({ embeds: [embed] }).catch(err => {
-          MusicLogger.logError('addSong - send', err);
+        MusicLogger.logSuccess('trackStart', `Now playing ${track.info.title}`, { 
+          guildId: player.guildId,
+          requester: requesterTag 
         });
+
+        MusicLogger.logMusicActivity(player.guildId, 'play', { name: track.info.title });
       } catch (error) {
-        MusicLogger.logError('addSong', error);
+        MusicLogger.logError('trackStart', error);
       }
     })
-
-    .on('addList', (queue, playlist) => {
+    .on('queueEnd', async (player) => {
       try {
-        const embed = createEmbed('music', client)
-          .setTitle('🎀 Playlist Added')
-          .setDescription(`Added **${playlist.songs.length}** tracks from **${playlist.name}** to the queue ✨.`)
-          .addFields({ name: '🧸 Requester', value: playlist.user.tag });
-        queue.textChannel?.send({ embeds: [embed] }).catch(err => {
-          MusicLogger.logError('addList - send', err);
-        });
-      } catch (error) {
-        MusicLogger.logError('addList', error);
-      }
-    })
-
-    .on('error', (error, queue, song) => {
-      const errorType = MusicLogger.categorizeError(error);
-      const userMessage = MusicLogger.getErrorMessage(errorType);
-      
-      MusicLogger.logError('distube_error', error, {
-        errorType,
-        track: song?.name || 'Unknown',
-        guildId: queue?.voiceChannel?.guild?.id
-      });
-
-      const channel = queue?.textChannel;
-      if (channel && typeof channel.send === 'function') {
-        let friendlyMsg = error?.message?.slice(0, 100) || 'Unknown error';
-        if (error?.message?.includes('DRM')) {
-          friendlyMsg = 'This track is DRM-protected and cannot be streamed 🔒';
-        } else if (error?.message?.includes('Sign in') || error?.message?.includes('bot')) {
-          friendlyMsg = 'YouTube cookies may have expired — notify the bot owner 🍪';
+        const channel = client.channels.cache.get(player.textChannel);
+        if (channel) {
+          channel.send({
+            embeds: [createEmbed('music', client)
+              .setTitle('🎀 Queue Finished')
+              .setDescription('All songs have been played! ✨')]
+          }).catch(err => MusicLogger.logError('queueEnd - send', err));
         }
-        
-        const errorEmbed = createEmbed('error', client)
-          .setTitle('🥺 Music Error')
-          .setDescription(`${userMessage}\n\n**Details:** ${friendlyMsg}`);
-
-        channel.send({ embeds: [errorEmbed] }).catch(err => {
-          console.error('Failed to send error message:', err?.message);
-        });
-
-        // Send follow-up attempt
-        if (errorType === MusicLogger.ERROR_TYPES.NETWORK) {
-          setTimeout(() => {
-            channel.send({ content: '🔄 Retrying stream...' }).catch(() => {});
-          }, 2000);
-        }
-      }
-
-      MusicLogger.logMusicActivity(queue?.voiceChannel?.guild?.id, 'error', song, { message: error?.message });
-    })
-
-    .on('empty', queue => {
-      try {
-        queue.textChannel?.send({
-          embeds: [createEmbed('music', client)
-            .setTitle('🎀 Voice Channel Empty')
-            .setDescription('Everyone left, so I\'m stopping the music. Bye bye! ~ 🦋')]
-        }).catch(err => {
-          MusicLogger.logError('empty - send', err);
-        });
-        MusicLogger.logMusicActivity(queue.voiceChannel?.guild?.id, 'stop', {});
+        player.destroy(); // Properly cleanup player
       } catch (error) {
-        MusicLogger.logError('empty', error);
-      }
-    })
-
-    .on('finish', queue => {
-      try {
-        queue.textChannel?.send({
-          embeds: [createEmbed('music', client)
-            .setTitle('🎀 Queue Finished')
-            .setDescription('All songs have been played! ✨')]
-        }).catch(err => {
-          MusicLogger.logError('finish - send', err);
-        });
-      } catch (error) {
-        MusicLogger.logError('finish', error);
+        MusicLogger.logError('queueEnd', error);
       }
     });
 }
 
 module.exports = {
-  handleDistubeEvents
+  handleRiffyEvents
 };

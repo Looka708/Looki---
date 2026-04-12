@@ -7,9 +7,9 @@ module.exports = {
     .setName('nowplaying')
     .setDescription('Show details of the current song 🎀'),
   execute: async (interaction, client) => {
-    const queue = client.distube.getQueue(interaction.guildId);
+    const player = client.riffy.players.get(interaction.guildId);
 
-    if (!queue || !queue.songs[0]) {
+    if (!player || !player.current) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('Nothing is playing right now! 🦋');
@@ -17,15 +17,18 @@ module.exports = {
     }
 
     try {
-      const song = queue.songs[0];
+      const track = player.current;
+      const progress = new Date(player.position).toISOString().substr(14, 5);
+      const total = new Date(track.info.length).toISOString().substr(14, 5);
+      
       const embed = createEmbed('music', client)
-        .setTitle(`${song.name}`)
-        .setURL(song.url)
-        .setThumbnail(song.thumbnail)
+        .setTitle(`${track.info.title}`)
+        .setURL(track.info.uri)
+        .setThumbnail(track.info.thumbnail)
         .addFields(
-          { name: '🦋 Artist', value: `> **${song.uploader.name}**`, inline: true },
-          { name: '💖 Progress', value: `> **${queue.formattedCurrentTime} / ${song.formattedDuration}**`, inline: true },
-          { name: '🧸 Requested by', value: `> **${song.user.tag}**`, inline: true }
+          { name: '🦋 Artist', value: `> **${track.info.author}**`, inline: true },
+          { name: '💖 Progress', value: `> **${progress} / ${total}**`, inline: true },
+          { name: '🧸 Requested by', value: `> **${track.info.requester?.tag || 'Unknown'}**`, inline: true }
         );
 
       await interaction.reply({ embeds: [embed] });

@@ -7,16 +7,16 @@ module.exports = {
     .setName('resume')
     .setDescription('Resume the paused song ✨'),
   execute: async (interaction, client) => {
-    const queue = client.distube.getQueue(interaction.guildId);
+    const player = client.riffy.players.get(interaction.guildId);
 
-    if (!queue || !queue.songs[0]) {
+    if (!player || !player.current) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('There is no song to resume! 🎀');
       return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
 
-    if (!queue.paused) {
+    if (!player.paused) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('✨ Already Playing')
         .setDescription('The player is not paused! 🎀');
@@ -25,11 +25,11 @@ module.exports = {
 
     try {
       await interaction.deferReply();
-      queue.resume();
+      player.pause(false);
 
       const resumeEmbed = createEmbed('music', client)
         .setTitle('✨ Song Resumed')
-        .setDescription(`Resumed **[${queue.songs[0].name}](${queue.songs[0].url})**! 🎀`);
+        .setDescription(`Resumed **[${player.current.info.title}](${player.current.info.uri})**! 🎀`);
       
       await interaction.editReply({ embeds: [resumeEmbed] });
       

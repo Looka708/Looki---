@@ -17,9 +17,9 @@ module.exports = {
         )
     ),
   execute: async (interaction, client) => {
-    const queue = client.distube.getQueue(interaction.guildId);
+    const player = client.riffy.players.get(interaction.guildId);
 
-    if (!queue) {
+    if (!player) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('No music is currently playing! 🎀');
@@ -28,12 +28,13 @@ module.exports = {
 
     try {
       const mode = interaction.options.getInteger('mode');
-      queue.setRepeatMode(mode);
+      const modes = ['none', 'track', 'queue'];
+      player.setLoop(modes[mode]);
       
-      const modes = ['OFF', 'TRACK', 'QUEUE'];
+      const displayModes = ['OFF', 'TRACK', 'QUEUE'];
       const embed = createEmbed('music', client)
         .setTitle('🔁 Loop Mode Updated')
-        .setDescription(`Set loop mode to: **${modes[mode]}** ✨`);
+        .setDescription(`Set loop mode to: **${displayModes[mode]}** ✨`);
       
       await interaction.reply({ embeds: [embed] });
       

@@ -7,9 +7,9 @@ module.exports = {
     .setName('stop')
     .setDescription('Stop the music and clear the queue 🧸'),
   execute: async (interaction, client) => {
-    const queue = client.distube.getQueue(interaction.guildId);
+    const player = client.riffy.players.get(interaction.guildId);
 
-    if (!queue) {
+    if (!player) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('No music is currently playing! 🎀');
@@ -18,7 +18,7 @@ module.exports = {
 
     try {
       await interaction.deferReply();
-      queue.stop();
+      player.destroy();
 
       const stopEmbed = createEmbed('music', client)
         .setTitle('🧸 Music Stopped')

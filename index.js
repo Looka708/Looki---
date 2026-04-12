@@ -4,15 +4,9 @@ const path = require('path');
 const http = require('http');
 const axios = require('axios');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const { DisTube } = require('distube');
-const { YouTubePlugin } = require('@distube/youtube');
-const { YtDlpPlugin } = require('@distube/yt-dlp');
-const { SpotifyPlugin } = require('@distube/spotify');
-const { SoundCloudPlugin } = require('@distube/soundcloud');
-const ffmpeg = require('ffmpeg-static');
+const { Riffy } = require('riffy');
 const { initializeTables } = require('./utils/supabase');
-const { handleDistubeEvents } = require('./utils/audioPlayer');
-const { parseCookies, getCookiePath } = require('./utils/youtube');
+const { handleRiffyEvents } = require('./utils/audioPlayer');
 
 // ── Global Error Handling to Prevent Crashes ───────────
 process.on('unhandledRejection', (reason, promise) => {
@@ -43,40 +37,45 @@ const client = new Client({
   ],
 });
 
-// 🌸 YouTube Cookie Loading
-const cookiePath = getCookiePath();
-let youtubeCookies = [];
-if (cookiePath) {
-  youtubeCookies = parseCookies(cookiePath);
-  console.log(`🌸 [System] Loaded ${youtubeCookies.length} YouTube cookies from ${path.basename(cookiePath)}`);
-  // Diagnostic: verify critical cookies and format
-  const critical = ['SID', '__Secure-1PSID', 'LOGIN_INFO', 'YSC', 'HSID'];
-  const found = youtubeCookies.filter(c => critical.includes(c.name));
-  console.log(`🌸 [Cookies] Critical cookies found: ${found.map(c => `${c.name}(exp:${c.expirationDate || 'session'},ho:${c.hostOnly})`).join(', ')}`);
-} else {
-  console.log('🥺 [System] No YouTube cookies found. Using default session (risk of bot detection).');
-}
+// 🌸 Initialize Riffy ───────────
+const nodes = [
+  {
+    name: 'Jirayu',
+    host: process.env.LAVALINK_JIRAYU_URL?.split(':')[0] || 'lavalink.jirayu.net',
+    port: parseInt(process.env.LAVALINK_JIRAYU_URL?.split(':')[1] || 13592),
+    password: process.env.LAVALINK_JIRAYU_PWD || 'youshallnotpass',
+    secure: process.env.LAVALINK_JIRAYU_SECURE === 'true' || false,
+  },
+  {
+    name: 'Serenetia',
+    host: process.env.LAVALINK_SERENETIA_URL?.split(':')[0] || 'lavalinkv4.serenetia.com',
+    port: parseInt(process.env.LAVALINK_SERENETIA_URL?.split(':')[1] || 80),
+    password: process.env.LAVALINK_SERENETIA_PWD || 'https://dsc.gg/ajidevserver',
+    secure: process.env.LAVALINK_SERENETIA_SECURE === 'true' || false,
+  },
+  {
+    name: 'SerenetiaSSL',
+    host: process.env.LAVALINK_SERENETIASSL_URL?.split(':')[0] || 'lavalinkv4.serenetia.com',
+    port: parseInt(process.env.LAVALINK_SERENETIASSL_URL?.split(':')[1] || 443),
+    password: process.env.LAVALINK_SERENETIASSL_PWD || 'https://dsc.gg/ajidevserver',
+    secure: process.env.LAVALINK_SERENETIASSL_SECURE === 'true' || true,
+  }
+];
 
-// 🌸 Initialize yt-dlp plugin for non-typical links (update on startup)
-const customYtDlpPlugin = new YtDlpPlugin({ update: true });
-
-// Plugin order matters! 
-client.distube = new DisTube(client, {
-    ffmpeg: {
-        path: ffmpeg
-    },
-    emitNewSongOnly: true,
-    nsfw: true,
-    plugins: [
-        new SpotifyPlugin(),
-        new SoundCloudPlugin(),
-        new YouTubePlugin({ cookies: youtubeCookies.length ? youtubeCookies : undefined }),
-        customYtDlpPlugin
-    ]
+client.riffy = new Riffy(client, nodes, {
+  send: (payload) => {
+    const guild = client.guilds.cache.get(payload.d.guild_id);
+    if (guild) guild.shard.send(payload);
+  },
+  defaultSearchPlatform: "ytmsearch",
+  restVersion: "v4" // Assuming Lavalink v4
 });
 
-// Initialize DisTube Events
-handleDistubeEvents(client);
+// Bind Discord voice state updates to Riffy
+client.on("raw", (d) => client.riffy.updateVoiceState(d));
+
+// Initialize Riffy Events
+handleRiffyEvents(client);
 
 // Initialize command collection
 client.commands = new Collection();
@@ -150,6 +149,7 @@ async function start() {
     loadCommands();
     loadEvents();
     await client.login(token);
+    client.riffy.init(client.user.id); // Initialize Riffy with bot's client ID
   } catch (error) {
     console.error('❌ Bot startup error:', error);
     process.exit(1);
