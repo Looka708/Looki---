@@ -33,28 +33,61 @@ function buildMusicControls() {
   return [row1, row2];
 }
 
+/**
+ * Fix for "guild already has connection" bug.
+ * Cleans up existing stuck players before joining.
+ */
+async function safeJoin(kazagumo, guildId, channelId, shardId = 0) {
+  // Destroy existing player if stuck
+  const existing = kazagumo.players.get(guildId);
+  if (existing) {
+    await existing.destroy();
+    // Brief wait for cleanup
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  return await kazagumo.createPlayer({
+    guildId,
+    voiceId: channelId,
+    textId: null, // set later in command
+    shardId,
+    deaf: true
+  });
+}
+
 // ── Main Handler ─────────────────────────────────────────
-function handleRiffyEvents(client) {
-  client.riffy
+function handleKazagumoEvents(client) {
+  client.kazagumo.shoukaku
 
-    // ── Node Events ───────────────────────────────────────
-    .on('nodeConnect', (node) => {
-      console.log(`🌸 [Riffy] Node "${node.name}" connected!`);
+    // ── Shoukaku Node Events ──────────────────────────────
+    .on('ready', (name) => {
+      console.log(`🌸 [Kazagumo/Shoukaku] Node "${name}" connected!`);
     })
-    .on('nodeError', (node, error) => {
-      console.error(`🥺 [Riffy] Node "${node.name}" error: ${error?.message || error}`);
+    .on('error', (name, error) => {
+      console.error(`🥺 [Kazagumo/Shoukaku] Node "${name}" error: ${error?.message || error}`);
     })
-    .on('nodeDisconnect', (node) => {
-      console.warn(`⚠️ [Riffy] Node "${node.name}" disconnected. Will attempt reconnect...`);
+    .on('close', (name, code, reason) => {
+      console.warn(`⚠️ [Kazagumo/Shoukaku] Node "${name}" closed (Code: ${code}). Reason: ${reason}`);
     })
+    .on('disconnect', (name, moved) => {
+      console.warn(`⚠️ [Kazagumo/Shoukaku] Node "${name}" disconnected. Moved: ${moved}`);
+    });
 
-    // ── Track Start ───────────────────────────────────────
-    .on('trackStart', async (player, track) => {
+  client.kazagumo
+
+    // ── Player Start ───────────────────────────────────────
+    .on('playerStart', async (player, track) => {
       try {
-        const channel = client.channels.cache.get(player.textChannel);
+        const channel = client.channels.cache.get(player.textId);
         if (!channel) return;
 
-        const requester = track.info.requester;
+        const currentNowPlaying = player.data.get('nowPlaying');
+        if (currentNowPlaying) {
+           player.data.set('previousTrack', currentNowPlaying);
+        }
+        player.data.set('nowPlaying', track);
+
+        const requester = track.requester;
         const requesterTag = requester?.tag || requester?.username || 'Unknown User';
         const requesterAvatar = requester?.displayAvatarURL?.() || null;
 
@@ -63,16 +96,16 @@ function handleRiffyEvents(client) {
             name: '🎀 Now Playing 🎀',
             iconURL: requesterAvatar || client.user.displayAvatarURL(),
           })
-          .setTitle(track.info.title)
-          .setURL(track.info.uri)
+          .setTitle(track.title)
+          .setURL(track.uri)
           .setColor(0xFFB6C1)
+          .setThumbnail(track.thumbnail || CATEGORY_GIFS?.music || client.user.displayAvatarURL())
           .addFields(
-            { name: '🦋 Artist', value: `> **${track.info.author || 'Unknown'}**`, inline: true },
-            { name: '💖 Duration', value: `> **${formatDuration(track.info.length)}**`, inline: true },
+            { name: '🦋 Artist', value: `> **${track.author || 'Unknown'}**`, inline: true },
+            { name: '💖 Duration', value: `> **${formatDuration(track.length)}**`, inline: true },
             { name: '🧸 Requested by', value: `> **${requesterTag}**`, inline: true }
           )
-          .setImage(track.info.thumbnail || CATEGORY_GIFS?.music || null)
-          .setThumbnail(CATEGORY_GIFS?.music || client.user.displayAvatarURL())
+          .setImage(track.thumbnail || CATEGORY_GIFS?.music || null)
           .setFooter({
             text: `🎀 looki~ • ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`,
             iconURL: client.user.displayAvatarURL(),
@@ -81,29 +114,30 @@ function handleRiffyEvents(client) {
         const message = await channel.send({
           embeds: [playEmbed],
           components: buildMusicControls(),
-        }).catch(err => MusicLogger.logError('trackStart - send', err, { guildId: player.guildId }));
+        }).catch(err => MusicLogger.logError('playerStart - send', err, { guildId: player.guildId }));
 
         // Store message ID to disable buttons later
-        if (message) player.messageId = message.id;
+        if (message) player.data.set('messageId', message.id);
 
-        MusicLogger.logSuccess('trackStart', `Now playing ${track.info.title}`, {
+        MusicLogger.logSuccess('playerStart', `Now playing ${track.title}`, {
           guildId: player.guildId,
           requester: requesterTag,
         });
-        MusicLogger.logMusicActivity(player.guildId, 'play', { name: track.info.title });
+        MusicLogger.logMusicActivity(player.guildId, 'play', { name: track.title });
 
       } catch (error) {
-        MusicLogger.logError('trackStart', error);
+        MusicLogger.logError('playerStart', error);
       }
     })
 
-    // ── Track End — disable buttons on old message ────────
-    .on('trackEnd', async (player) => {
+    // ── Player End — disable buttons on old message ────────
+    .on('playerEnd', async (player) => {
       try {
-        if (player.messageId) {
-          const channel = client.channels.cache.get(player.textChannel);
+        const messageId = player.data.get('messageId');
+        if (messageId) {
+          const channel = client.channels.cache.get(player.textId);
           if (channel) {
-            const msg = await channel.messages.fetch(player.messageId).catch(() => null);
+            const msg = await channel.messages.fetch(messageId).catch(() => null);
             if (msg) {
               const disabledRows = buildMusicControls().map(row => {
                 row.components.forEach(btn => btn.setDisabled(true));
@@ -112,44 +146,21 @@ function handleRiffyEvents(client) {
               await msg.edit({ components: disabledRows }).catch(() => { });
             }
           }
-          player.messageId = null;
+          player.data.delete('messageId');
         }
       } catch (error) {
-        MusicLogger.logError('trackEnd', error);
+        MusicLogger.logError('playerEnd', error);
       }
     })
 
-    // ── Track Error ───────────────────────────────────────
-    .on('trackError', async (player, track, error) => {
+    // ── Player Empty ──────────────────────────────────────
+    .on('playerEmpty', async (player) => {
       try {
-        console.error(`🥺 [Riffy] Track error: ${error?.message || error}`);
-        const channel = client.channels.cache.get(player.textChannel);
-        if (channel) {
-          await channel.send({
-            embeds: [createEmbed('error', client)
-              .setTitle('🥺 Track Error')
-              .setDescription(`Failed to play **${track?.info?.title || 'Unknown'}**. Skipping... ✨`)]
-          }).catch(() => { });
-        }
-        // Auto-skip to next track
-        if (player.queue.size > 0) {
-          player.stop();
-        } else {
-          player.destroy();
-        }
-      } catch (err) {
-        MusicLogger.logError('trackError', err);
-      }
-    })
-
-    // ── Queue End ─────────────────────────────────────────
-    .on('queueEnd', async (player) => {
-      try {
-        // Disable buttons on last now-playing message
-        if (player.messageId) {
-          const channel = client.channels.cache.get(player.textChannel);
+        const messageId = player.data.get('messageId');
+        if (messageId) {
+          const channel = client.channels.cache.get(player.textId);
           if (channel) {
-            const msg = await channel.messages.fetch(player.messageId).catch(() => null);
+            const msg = await channel.messages.fetch(messageId).catch(() => null);
             if (msg) {
               const disabledRows = buildMusicControls().map(row => {
                 row.components.forEach(btn => btn.setDisabled(true));
@@ -160,20 +171,37 @@ function handleRiffyEvents(client) {
           }
         }
 
-        const channel = client.channels.cache.get(player.textChannel);
+        const channel = client.channels.cache.get(player.textId);
         if (channel) {
           await channel.send({
             embeds: [createEmbed('music', client)
               .setTitle('🎀 Queue Finished')
               .setDescription('All songs have been played! Add more with `/play` ✨')]
-          }).catch(err => MusicLogger.logError('queueEnd - send', err));
+          }).catch(err => MusicLogger.logError('playerEmpty - send', err));
         }
 
         player.destroy();
       } catch (error) {
-        MusicLogger.logError('queueEnd', error);
+        MusicLogger.logError('playerEmpty', error);
+      }
+    })
+
+    // ── Player Error ──────────────────────────────────────
+    .on('playerError', async (player, track, error) => {
+      try {
+        console.error(`🥺 [Kazagumo] Player error: ${error?.message || error}`);
+        const channel = client.channels.cache.get(player.textId);
+        if (channel) {
+          await channel.send({
+            embeds: [createEmbed('error', client)
+              .setTitle('🥺 Track Error')
+              .setDescription(`Failed to play **${track?.title || 'Unknown'}**. Skipping... ✨`)]
+          }).catch(() => { });
+        }
+      } catch (err) {
+        MusicLogger.logError('playerError', err);
       }
     });
 }
 
-module.exports = { handleRiffyEvents };
+module.exports = { handleKazagumoEvents, safeJoin };

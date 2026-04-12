@@ -7,7 +7,7 @@ module.exports = {
     .setName('queue')
     .setDescription('See the upcoming songs 📜'),
   execute: async (interaction, client) => {
-    const player = client.riffy.players.get(interaction.guildId);
+    const player = client.kazagumo.players.get(interaction.guildId);
 
     if (!player) {
       const errorEmbed = createEmbed('error', client)
@@ -17,15 +17,16 @@ module.exports = {
     }
 
     try {
-      const q = [...player.queue]
+      const current = player.queue.current;
+      const q = player.queue
         .slice(0, 10)
-        .map((track, i) => `**${i + 1}.** [${track.info.title}](${track.info.uri}) - \`${new Date(track.info.length).toISOString().substr(14, 5)}\``)
+        .map((track, i) => `**${i + 1}.** [${track.title}](${track.uri}) - \`${new Date(track.length).toISOString().substr(14, 5)}\``)
         .join('\n');
 
       const embed = createEmbed('music', client)
         .setTitle('📜 Current Queue')
-        .setDescription(`**Now Playing:** [${player.current?.info?.title || 'Unknown'}](${player.current?.info?.uri || '#'})\n\n${q || 'No more songs in queue!'}`)
-        .setFooter({ text: `Tracks: ${player.queue.length + (player.current ? 1 : 0)}` });
+        .setDescription(`**Now Playing:** [${current?.title || 'Unknown'}](${current?.uri || '#'})\n\n${q || 'No more songs in queue! ✨'}`)
+        .setFooter({ text: `Tracks: ${player.queue.length + (current ? 1 : 0)} 🎀` });
 
       await interaction.reply({ embeds: [embed] });
       

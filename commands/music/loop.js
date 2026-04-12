@@ -17,7 +17,7 @@ module.exports = {
         )
     ),
   execute: async (interaction, client) => {
-    const player = client.riffy.players.get(interaction.guildId);
+    const player = client.kazagumo.players.get(interaction.guildId);
 
     if (!player) {
       const errorEmbed = createEmbed('error', client)

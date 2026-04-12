@@ -7,9 +7,9 @@ module.exports = {
     .setName('skip')
     .setDescription('Skip the current song 🧸'),
   execute: async (interaction, client) => {
-    const player = client.riffy.players.get(interaction.guildId);
+    const player = client.kazagumo.players.get(interaction.guildId);
 
-    if (!player || !player.current) {
+    if (!player || !player.queue.current) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('There is no song to skip! 🎀');
@@ -19,7 +19,7 @@ module.exports = {
     try {
       await interaction.deferReply();
       
-      player.stop();
+      player.skip();
 
       const skipEmbed = createEmbed('music', client)
         .setTitle('🧸 Song Skipped')

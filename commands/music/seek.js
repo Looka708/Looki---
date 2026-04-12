@@ -23,16 +23,16 @@ module.exports = {
         });
       }
 
-      const player = client.riffy.players.get(interaction.guildId);
+      const player = client.kazagumo.players.get(interaction.guildId);
 
-      if (!player || !player.current) {
+      if (!player || !player.queue.current) {
         return await interaction.reply({
           content: '❌ No music is currently playing!',
           ephemeral: true
         });
       }
 
-      if (voiceChannel.id !== player.voiceChannel) {
+      if (voiceChannel.id !== player.voiceId) {
         return await interaction.reply({
           content: '🥺 You must be in the same voice channel as Looki!',
           ephemeral: true
@@ -43,10 +43,13 @@ module.exports = {
       let seconds = 0;
       if (timeString.includes(':')) {
         const parts = timeString.split(':');
-        if (parts.length === 2) seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-      } else if (timeString.includes('m') || timeString.includes('s')) {
+        if (parts.length === 2) seconds = parseInt(parts[0]) * 60 + (parseInt(parts[1]) || 0);
+        else if (parts.length === 3) seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + (parseInt(parts[2]) || 0);
+      } else if (timeString.includes('m') || timeString.includes('s') || timeString.includes('h')) {
+        const hourMatch = timeString.match(/(\d+)h/);
         const minuteMatch = timeString.match(/(\d+)m/);
         const secondMatch = timeString.match(/(\d+)s/);
+        if (hourMatch) seconds += parseInt(hourMatch[1]) * 3600;
         if (minuteMatch) seconds += parseInt(minuteMatch[1]) * 60;
         if (secondMatch) seconds += parseInt(secondMatch[1]);
       } else if (!isNaN(timeString)) {
@@ -57,8 +60,8 @@ module.exports = {
         return await interaction.reply({ content: '❌ Invalid time format!', ephemeral: true });
       }
 
-      const currentSong = player.current;
-      const duration = currentSong.info.length / 1000;
+      const currentSong = player.queue.current;
+      const duration = currentSong.length / 1000;
 
       if (seconds > duration) {
         return await interaction.reply({ content: '❌ Time exceeds song duration!', ephemeral: true });

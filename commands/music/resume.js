@@ -7,9 +7,9 @@ module.exports = {
     .setName('resume')
     .setDescription('Resume the paused song ✨'),
   execute: async (interaction, client) => {
-    const player = client.riffy.players.get(interaction.guildId);
+    const player = client.kazagumo.players.get(interaction.guildId);
 
-    if (!player || !player.current) {
+    if (!player || !player.queue.current) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('There is no song to resume! 🎀');
@@ -29,7 +29,7 @@ module.exports = {
 
       const resumeEmbed = createEmbed('music', client)
         .setTitle('✨ Song Resumed')
-        .setDescription(`Resumed **[${player.current.info.title}](${player.current.info.uri})**! 🎀`);
+        .setDescription(`Resumed **[${player.queue.current.title}](${player.queue.current.uri})**! 🎀`);
       
       await interaction.editReply({ embeds: [resumeEmbed] });
       

@@ -7,9 +7,9 @@ module.exports = {
     .setName('nowplaying')
     .setDescription('Show details of the current song 🎀'),
   execute: async (interaction, client) => {
-    const player = client.riffy.players.get(interaction.guildId);
+    const player = client.kazagumo.players.get(interaction.guildId);
 
-    if (!player || !player.current) {
+    if (!player || !player.queue.current) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('Nothing is playing right now! 🦋');
@@ -17,18 +17,18 @@ module.exports = {
     }
 
     try {
-      const track = player.current;
+      const track = player.queue.current;
       const progress = new Date(player.position).toISOString().substr(14, 5);
-      const total = new Date(track.info.length).toISOString().substr(14, 5);
+      const total = new Date(track.length).toISOString().substr(14, 5);
       
       const embed = createEmbed('music', client)
-        .setTitle(`${track.info.title}`)
-        .setURL(track.info.uri)
-        .setThumbnail(track.info.thumbnail)
+        .setTitle(`${track.title}`)
+        .setURL(track.uri)
+        .setThumbnail(track.thumbnail)
         .addFields(
-          { name: '🦋 Artist', value: `> **${track.info.author}**`, inline: true },
+          { name: '🦋 Artist', value: `> **${track.author}**`, inline: true },
           { name: '💖 Progress', value: `> **${progress} / ${total}**`, inline: true },
-          { name: '🧸 Requested by', value: `> **${track.info.requester?.tag || 'Unknown'}**`, inline: true }
+          { name: '🧸 Requested by', value: `> **${track.requester?.tag || 'Unknown User'}**`, inline: true }
         );
 
       await interaction.reply({ embeds: [embed] });

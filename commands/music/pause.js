@@ -7,9 +7,9 @@ module.exports = {
     .setName('pause')
     .setDescription('Pause the current song 🧸'),
   execute: async (interaction, client) => {
-    const player = client.riffy.players.get(interaction.guildId);
+    const player = client.kazagumo.players.get(interaction.guildId);
 
-    if (!player || !player.current) {
+    if (!player || !player.queue.current) {
       const errorEmbed = createEmbed('error', client)
         .setTitle('🥺 Nothing Playing')
         .setDescription('There is no song playing to pause! 🎀');
@@ -29,7 +29,7 @@ module.exports = {
 
       const pauseEmbed = createEmbed('music', client)
         .setTitle('🧸 Song Paused')
-        .setDescription(`Paused **[${player.current.info.title}](${player.current.info.uri})**! Use /resume to continue! ✨`);
+        .setDescription(`Paused **[${player.queue.current.title}](${player.queue.current.uri})**! Use /resume to continue! ✨`);
       
       await interaction.editReply({ embeds: [pauseEmbed] });
       

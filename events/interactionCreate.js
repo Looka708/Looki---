@@ -35,14 +35,14 @@ module.exports = {
 };
 
 async function handleMusicButtons(interaction, client) {
-  const player = client.riffy.players.get(interaction.guildId);
+  const player = client.kazagumo.players.get(interaction.guildId);
 
   if (!player) {
     return interaction.reply({ content: '🥺 No active music session found!', ephemeral: true });
   }
 
   const voiceChannel = interaction.member.voice.channel;
-  if (!voiceChannel || voiceChannel.id !== player.voiceChannel) {
+  if (!voiceChannel || voiceChannel.id !== player.voiceId) {
     return interaction.reply({ content: '🥺 You must be in the same voice channel as Looki!', ephemeral: true });
   }
 
@@ -59,17 +59,20 @@ async function handleMusicButtons(interaction, client) {
         break;
 
       case 'music_skip':
-        player.stop(); // Stops current track, plays next if queued
+        player.skip(); // Stops current track, plays next if queued
         await interaction.reply({ content: '⏭️ Skipping to the next masterpiece! 🎀', ephemeral: true });
         break;
 
       case 'music_previous':
-        if (player.previous) {
-            player.queue.unshift(player.current);
-            player.play(player.previous);
+        // Kazagumo doesn't have built-in previous track, so we just inform the user for now
+        // or check if we stored it in player.data
+        const prevTrack = player.data.get('previousTrack');
+        if (prevTrack) {
+            player.queue.add(prevTrack, { index: 0 });
+            player.skip();
             await interaction.reply({ content: '⏮️ Returning to the previous melody! 🎀', ephemeral: true });
         } else {
-            await interaction.reply({ content: '🥺 No previous songs to play! ✨', ephemeral: true });
+            await interaction.reply({ content: '🥺 No previous songs found in memory! ✨', ephemeral: true });
         }
         break;
 
@@ -113,18 +116,18 @@ async function handleMusicButtons(interaction, client) {
           break;
 
       case 'music_like':
-          const track = player.current;
+          const track = player.queue.current;
           if (!track) return interaction.reply({ content: '🥺 Nothing playing right now!', ephemeral: true });
           
           try {
               const UserFavorites = require('../models/UserFavorites');
               await UserFavorites.addFavorite(interaction.user.id, {
-                  name: track.info.title,
-                  url: track.info.uri,
-                  thumbnail: track.info.thumbnail,
-                  uploader: { name: track.info.author }
+                  name: track.title,
+                  url: track.uri,
+                  thumbnail: track.thumbnail,
+                  uploader: { name: track.author }
               });
-              await interaction.reply({ content: `🤍 Added **${track.info.title}** to your favorites! 🎀`, ephemeral: true });
+              await interaction.reply({ content: `🤍 Added **${track.title}** to your favorites! 🎀`, ephemeral: true });
           } catch (e) {
              console.error('Like button error:', e);
              await interaction.reply({ content: '🥺 Could not save to favorites... ✨', ephemeral: true });

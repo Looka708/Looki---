@@ -4,9 +4,10 @@ const path = require('path');
 const http = require('http');
 const axios = require('axios');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const { Riffy } = require('riffy');
 const { initializeTables } = require('./utils/supabase');
-const { handleRiffyEvents } = require('./utils/audioPlayer');
+const { Kazagumo, Plugins } = require('kazagumo');
+const { Connectors } = require('shoukaku');
+const { handleKazagumoEvents } = require('./utils/audioPlayer');
 
 // ── Global Error Handling ───────────────────────────────
 process.on('unhandledRejection', (reason, promise) => {
@@ -58,44 +59,38 @@ const client = new Client({
 const nodes = [
   {
     name: 'Jirayu',
-    host: 'lavalink.jirayu.net',
-    port: 13592,
-    password: 'youshallnotpass',
+    url: 'lavalink.jirayu.net:13592',
+    auth: 'youshallnotpass',
     secure: false,
   },
   {
     name: 'Serenetia',
-    host: 'lavalinkv4.serenetia.com',
-    port: 443,
-    password: 'https://dsc.gg/ajidevserver',
+    url: 'lavalinkv4.serenetia.com:443',
+    auth: 'https://dsc.gg/ajidevserver',
     secure: true,
   },
   {
     name: 'NextGenCoders',
-    host: 'lavalink.nextgencoders.xyz',
-    port: 443,
-    password: 'nextgencoderspvt',
+    url: 'lavalink.nextgencoders.xyz:443',
+    auth: 'nextgencoderspvt',
     secure: true,
   },
 ];
 
-// ── Riffy Init ──────────────────────────────────────────
-client.riffy = new Riffy(client, nodes, {
-  send: (payload) => {
-    const guild = client.guilds.cache.get(payload.d.guild_id);
+// ── Kazagumo Init ──────────────────────────────────────────
+client.kazagumo = new Kazagumo({
+  defaultSearchEngine: 'youtube',
+  plugins: [
+    new Plugins.PlayerMoved(client),
+  ],
+  send: (guildId, payload) => {
+    const guild = client.guilds.cache.get(guildId);
     if (guild) guild.shard.send(payload);
-  },
-  defaultSearchPlatform: 'ytsearch',
-  restVersion: 'v4',
-  reconnectTries: 5,
-  reconnectTimeout: 5000,
-});
+  }
+}, new Connectors.DiscordJS(client), nodes);
 
-// Bind Discord voice state updates to Riffy
-client.on('raw', (d) => client.riffy.updateVoiceState(d));
-
-// Initialize Riffy Events
-handleRiffyEvents(client);
+// Initialize Kazagumo Events
+handleKazagumoEvents(client);
 
 // ── Collections ─────────────────────────────────────────
 client.commands = new Collection();
@@ -171,7 +166,6 @@ async function start() {
     loadCommands();
     loadEvents();
     await client.login(token);
-    client.riffy.init(client.user.id);
   } catch (error) {
     console.error('❌ Bot startup error:', error);
     process.exit(1);
