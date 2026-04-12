@@ -49,6 +49,10 @@ let youtubeCookies = [];
 if (cookiePath) {
   youtubeCookies = parseCookies(cookiePath);
   console.log(`🌸 [System] Loaded ${youtubeCookies.length} YouTube cookies from ${path.basename(cookiePath)}`);
+  // Diagnostic: verify critical cookies and format
+  const critical = ['SID', '__Secure-1PSID', 'LOGIN_INFO', 'YSC', 'HSID'];
+  const found = youtubeCookies.filter(c => critical.includes(c.name));
+  console.log(`🌸 [Cookies] Critical cookies found: ${found.map(c => `${c.name}(exp:${c.expirationDate || 'session'},ho:${c.hostOnly})`).join(', ')}`);
 } else {
   console.log('🥺 [System] No YouTube cookies found. Using default session (risk of bot detection).');
 }

@@ -35,16 +35,38 @@ function parseCookies(input) {
             const parts = line.split('\t');
             if (parts.length >= 7) {
                 const domain = parts[0].trim();
-                // Keep the domain as is (including leading dot if present)
                 if (domain.includes('youtube.com') || domain.includes('google.com')) {
-                    return {
-                        name: parts[5].trim(),
+                    const cookieName = parts[5].trim();
+                    // Netscape format: domain, flag, path, secure, expiration, name, value
+                    // flag (parts[1]): TRUE = accessible to all subdomains → hostOnly=false
+                    const subdomainFlag = parts[1].trim().toUpperCase() === 'TRUE';
+                    const isSecure = parts[3].trim().toUpperCase() === 'TRUE';
+                    const expiration = parseInt(parts[4].trim());
+                    const isHttpOnly = cookieName.startsWith('__Secure-') || 
+                                       cookieName === 'SID' || 
+                                       cookieName === 'HSID' ||
+                                       cookieName === 'SSID' ||
+                                       cookieName === 'LOGIN_INFO';
+
+                    const cookie = {
+                        name: cookieName,
                         value: parts[6].trim(),
                         domain: domain,
                         path: parts[2].trim(),
-                        secure: parts[3].trim().toUpperCase() === 'TRUE',
-                        expires: parseInt(parts[4].trim())
+                        secure: isSecure,
+                        httpOnly: isHttpOnly,
+                        hostOnly: !subdomainFlag,
+                        sameSite: 'no_restriction',
                     };
+
+                    // Only set expirationDate for non-session cookies (expiration > 0)
+                    // Session cookies (expiration=0) must NOT have expirationDate
+                    // so tough-cookie treats them as "Infinity" (never expire)
+                    if (expiration > 0) {
+                        cookie.expirationDate = expiration;
+                    }
+
+                    return cookie;
                 }
             }
             return null;
