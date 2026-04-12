@@ -54,6 +54,8 @@ if (cookiePath) {
 }
 
 // 🌸 DisTube Initialization
+// Plugin order matters! YouTubePlugin handles YT URLs with cookies first.
+// YtDlpPlugin is last as a fallback for non-YouTube sources.
 client.distube = new DisTube(client, {
     ffmpeg: {
         path: ffmpeg
@@ -61,10 +63,6 @@ client.distube = new DisTube(client, {
     emitNewSongOnly: true,
     nsfw: true,
     plugins: [
-        new YtDlpPlugin({
-            update: true,
-            cookies: cookiePath || undefined
-        }),
         new YouTubePlugin({
             cookies: youtubeCookies.length > 0 ? youtubeCookies : undefined,
             ytdlOptions: {
@@ -75,7 +73,11 @@ client.distube = new DisTube(client, {
             }
         }),
         new SpotifyPlugin(),
-        new SoundCloudPlugin()
+        new SoundCloudPlugin(),
+        new YtDlpPlugin({
+            update: true,
+            cookies: cookiePath || undefined
+        })
     ]
 });
 

@@ -50,9 +50,21 @@ module.exports = {
 
     } catch (error) {
       console.error('Play command error:', error);
+      
+      let errorMessage = error.message || 'Something went wrong while connecting to music source 🦋.';
+      
+      // Friendly messages for common errors
+      if (error.message?.includes('DRM')) {
+        errorMessage = 'This video is **DRM-protected** and cannot be played. Try a different source! 🔒';
+      } else if (error.message?.includes('Sign in') || error.message?.includes('bot')) {
+        errorMessage = 'YouTube is blocking this request. The bot cookies may have expired — please notify the bot owner to refresh them! 🍪';
+      } else if (error.message?.includes('unavailable') || error.message?.includes('private')) {
+        errorMessage = 'This video is **private or unavailable**. Try a different link! 🔐';
+      }
+      
       const embed = createEmbed('error', client)
         .setTitle('🥺 Error Playing Song')
-        .setDescription(error.message || 'Something went wrong while connecting to music source 🦋.');
+        .setDescription(errorMessage);
       
       await interaction.editReply({ embeds: [embed] });
     }

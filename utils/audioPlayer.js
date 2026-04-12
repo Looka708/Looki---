@@ -104,9 +104,16 @@ function handleDistubeEvents(client) {
 
       const channel = queue?.textChannel;
       if (channel && typeof channel.send === 'function') {
+        let friendlyMsg = error?.message?.slice(0, 100) || 'Unknown error';
+        if (error?.message?.includes('DRM')) {
+          friendlyMsg = 'This track is DRM-protected and cannot be streamed 🔒';
+        } else if (error?.message?.includes('Sign in') || error?.message?.includes('bot')) {
+          friendlyMsg = 'YouTube cookies may have expired — notify the bot owner 🍪';
+        }
+        
         const errorEmbed = createEmbed('error', client)
           .setTitle('🥺 Music Error')
-          .setDescription(`${userMessage}\n\n**Technical:** ${error?.message?.slice(0, 100) || 'Unknown error'}`);
+          .setDescription(`${userMessage}\n\n**Details:** ${friendlyMsg}`);
 
         channel.send({ embeds: [errorEmbed] }).catch(err => {
           console.error('Failed to send error message:', err?.message);
