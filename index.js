@@ -6,6 +6,7 @@ const axios = require('axios');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { initializeTables } = require('./utils/supabase');
 const { Kazagumo, Plugins } = require('kazagumo');
+const Spotify = require('kazagumo-spotify');
 const { Connectors } = require('shoukaku');
 const { handleKazagumoEvents } = require('./utils/audioPlayer');
 
@@ -88,6 +89,14 @@ client.kazagumo = new Kazagumo({
   defaultSearchEngine: 'youtube',
   plugins: [
     new Plugins.PlayerMoved(client),
+    new Spotify({
+      clientId: process.env.SPOTIFY_CLIENT_ID || '',
+      clientSecret: process.env.SPOTIFY_CLIENT_SECRET || '',
+      playlistPageLimit: 1,
+      albumPageLimit: 1,
+      searchLimit: 10,
+      searchMarket: 'US',
+    }),
   ],
   send: (guildId, payload) => {
     const guild = client.guilds.cache.get(guildId);

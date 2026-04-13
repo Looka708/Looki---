@@ -19,6 +19,7 @@
     "dotenv": "^16.3.1",
     "jinter": "^0.4.2",
     "kazagumo": "^3.4.3",
+    "kazagumo-spotify": "^2.1.1",
     "libsodium-wrappers": "^0.8.2",
     "node-cron": "^3.0.3",
     "riffy": "^1.0.12",

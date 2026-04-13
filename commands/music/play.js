@@ -46,11 +46,21 @@ module.exports = {
         embeds: [createEmbed('music', client).setDescription(`🌸 Searching for your request... ✨`)]
       });
 
-      const resolve = await client.kazagumo.search(query, { requester: interaction.user });
+      const isUrl = (url) => {
+        try { new URL(url); return true; } catch (e) { return false; }
+      };
+
+      const searchOptions = { requester: interaction.user };
+      
+      // If it's a Spotify link, the plugin we just added will handle it.
+      // If it's a YouTube link, Kazagumo should handle it.
+      // If it's not a URL, it uses defaultSearchEngine (youtube).
+      
+      const resolve = await client.kazagumo.search(query, searchOptions);
       
       if (!resolve || !resolve.tracks.length) {
         return interaction.editReply({
-          embeds: [createEmbed('error', client).setDescription(`🥺 I couldn't find any results for **${query}**! Try a different name.`)]
+          embeds: [createEmbed('error', client).setDescription(`🥺 I couldn't find any results for **${query}**! ✨\n\n> *Tip: If it's a link, make sure it's public and accessible.*`)]
         });
       }
 
@@ -65,8 +75,9 @@ module.exports = {
         for (const track of resolve.tracks) {
           player.queue.add(track);
         }
+        const playlistName = resolve.playlistName || 'Playlist';
         await interaction.editReply({
-          embeds: [createEmbed('music', client).setDescription(`🎀 Added playlist **${resolve.playlistName}** with ${resolve.tracks.length} tracks! ✨`)]
+          embeds: [createEmbed('music', client).setDescription(`🎀 Added playlist **${playlistName}** (${resolve.tracks.length} tracks) to the queue! ✨`)]
         });
         if (!player.playing && !player.paused) player.play();
       } else {
@@ -74,7 +85,7 @@ module.exports = {
         player.queue.add(track);
         
         await interaction.editReply({
-          embeds: [createEmbed('music', client).setDescription(`💖 Added **[${track.title}](${track.uri})** to the queue!✨`)]
+          embeds: [createEmbed('music', client).setDescription(`💖 Added **[${track.title}](${track.uri})** to the queue! ✨`)]
         });
         if (!player.playing && !player.paused) player.play();
       }
