@@ -14,6 +14,7 @@ module.exports = {
     ),
 
   execute: async (interaction, client) => {
+    console.log(`🌸 [Play] Command received from ${interaction.user.tag} (Type: ${interaction.isChatInputCommand() ? 'Slash' : 'Prefix'})`);
     // 🌸 Defer reply immediately within the 3s window
     try {
       if (!interaction.deferred && !interaction.replied) {
