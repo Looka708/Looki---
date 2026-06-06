@@ -123,9 +123,11 @@ CREATE TABLE IF NOT EXISTS server_music_settings (
   id BIGSERIAL PRIMARY KEY,
   guild_id TEXT NOT NULL UNIQUE,
   default_volume INTEGER DEFAULT 50,
-  dj_role_id TEXT,
-  music_channel_id TEXT,
-  announce_songs BOOLEAN DEFAULT TRUE,
+    dj_role_id TEXT,
+    music_channel_id TEXT,
+    music_text_channel_id TEXT,
+    stay_247 BOOLEAN DEFAULT FALSE,
+    announce_songs BOOLEAN DEFAULT TRUE,
   autoplay_enabled BOOLEAN DEFAULT FALSE,
   bitrate_quality TEXT DEFAULT 'high' CHECK (bitrate_quality IN ('low', 'medium', 'high')),
   loop_default_mode INTEGER DEFAULT 0,
@@ -133,7 +135,11 @@ CREATE TABLE IF NOT EXISTS server_music_settings (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_server_music_settings_guild_id ON server_music_settings(guild_id);
+  CREATE INDEX IF NOT EXISTS idx_server_music_settings_guild_id ON server_music_settings(guild_id);
+
+  ALTER TABLE server_music_settings
+    ADD COLUMN IF NOT EXISTS music_text_channel_id TEXT,
+    ADD COLUMN IF NOT EXISTS stay_247 BOOLEAN DEFAULT FALSE;
 
 -- Server Music Playlists Table
 CREATE TABLE IF NOT EXISTS server_playlists (

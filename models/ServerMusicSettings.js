@@ -18,6 +18,7 @@ class ServerMusicSettings {
           default_volume: 50,
           announce_songs: true,
           autoplay_enabled: false,
+          stay_247: false,
           bitrate_quality: 'high',
           loop_default_mode: 0,
         };
@@ -68,6 +69,32 @@ class ServerMusicSettings {
       throw new Error('Volume must be between 0 and 100');
     }
     return this.updateSetting(guildId, 'default_volume', volume);
+  }
+
+  static async set247Mode(guildId, enabled, voiceChannelId = null, textChannelId = null) {
+    const { data, error } = await supabase
+      .from('server_music_settings')
+      .upsert({
+        guild_id: guildId,
+        stay_247: enabled,
+        music_channel_id: enabled ? voiceChannelId : null,
+        music_text_channel_id: enabled ? textChannelId : null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'guild_id' })
+      .select();
+
+    if (error) throw error;
+    return data?.[0];
+  }
+
+  static async get247Guilds() {
+    const { data, error } = await supabase
+      .from('server_music_settings')
+      .select('*')
+      .eq('stay_247', true);
+
+    if (error) throw error;
+    return data || [];
   }
 }
 

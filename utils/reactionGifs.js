@@ -1,77 +1,62 @@
-// Shared GIF collections for reaction commands
-// To prevent duplication and make maintenance easier
-
-module.exports = {
+// Direct media URLs with stable Giphy IDs. Keeping them in one place makes
+// broken links easy to replace without editing every reaction command.
+const GIFS = {
   blush: [
-    'https://media.tenor.com/images/a1e64e5e09c7af0cd47a17a1d3556297/tenor.gif',
-    'https://media.tenor.com/images/acc2d77b73b9c1a9a52e46c7b1bff4e5/tenor.gif',
-    'https://media.tenor.com/images/6eb53166cf6be32c2ebf96bbcff51e5e/tenor.gif',
-    'https://media.tenor.com/images/f4ba25c6defd0b2ecc4e6a7dc2df80dc/tenor.gif',
+    'https://media.giphy.com/media/v0z6ST7vX7g6Q/giphy.gif',
+    'https://media.giphy.com/media/5S4IdkvvB7i4M/giphy.gif',
   ],
-
   cry: [
-    'https://media.tenor.com/images/e8cf7d5f9b8f8b7b7b7b7b7b7b7b7b7b/tenor.gif',
-    'https://media.tenor.com/images/a1e64e5e09c7af0cd47a17a1d3556297/tenor.gif',
-    'https://media.tenor.com/images/acc2d77b73b9c1a9a52e46c7b1bff4e5/tenor.gif',
-    'https://media.tenor.com/images/6eb53166cf6be32c2ebf96bbcff51e5e/tenor.gif',
+    'https://media.giphy.com/media/ROF8OQvDsvvNu/giphy.gif',
+    'https://media.giphy.com/media/L95W4wv8n4qze/giphy.gif',
+    'https://media.giphy.com/media/2rtQMJvhzOnRe/giphy.gif',
+    'https://media.giphy.com/media/qQdL532ZANbjy/giphy.gif',
   ],
-
   dance: [
-    'https://media.tenor.com/images/c6b8eb75d58e7c3debdc0e1b73167cd8/tenor.gif',
-    'https://media.tenor.com/images/e3b16f86f36ae28d1fb69ca12c4f2b7f/tenor.gif',
-    'https://media.tenor.com/images/6eb53166cf6be32c2ebf96bbcff51e5e/tenor.gif',
-    'https://media.tenor.com/images/a1e64e5e09c7af0cd47a17a1d3556297/tenor.gif',
+    'https://media.giphy.com/media/5S4IdkvvB7i4M/giphy.gif',
+    'https://media.giphy.com/media/v0z6ST7vX7g6Q/giphy.gif',
   ],
-
-  wink: [
-    'https://media.tenor.com/images/92c0184e806c8f9d5fec2bb19e540fcd/tenor.gif',
-    'https://media.tenor.com/images/6330187195a6de27eca97dce86d89219/tenor.gif',
-    'https://media.tenor.com/images/ec3b13c11e1e8e2d1b2a3c4d5e6f7g8h/tenor.gif',
-    'https://media.tenor.com/images/i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4/tenor.gif',
-  ],
-
   highfive: [
-    'https://media.tenor.com/images/88491e31f99fb23dd906c4b3e7349559/tenor.gif',
-    'https://media.tenor.com/images/a72b07a7aaab8c3c8d9e0f1g2h3i4j5k/tenor.gif',
-    'https://media.tenor.com/images/l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0ab/tenor.gif',
+    'https://media.giphy.com/media/l41YtzJvVlK4RnsMo/giphy.gif',
+    'https://media.giphy.com/media/s2qXK8wAvkHTO/giphy.gif',
+    'https://media.giphy.com/media/UvPLmK0wKKhH2/giphy.gif',
   ],
-
   hug: [
-    'https://media.tenor.com/images/3065c3d3e0a8e6e6e6e6e6e6e6e6e6e6/tenor.gif',
-    'https://media.tenor.com/images/cd10bd57c6fa19cfbfbe3c0903c8d42a/tenor.gif',
-    'https://media.tenor.com/images/c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6/tenor.gif',
+    'https://media.giphy.com/media/lrr9cScdxK0NO/giphy.gif',
+    'https://media.giphy.com/media/od5H3PmEG5EVq/giphy.gif',
+    'https://media.giphy.com/media/PHZ7v9tfQu0o0/giphy.gif',
+    'https://media.giphy.com/media/u9BxQbM5bxvwY/giphy.gif',
   ],
-
   kiss: [
-    'https://media.tenor.com/images/8b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q/tenor.gif',
-    'https://media.tenor.com/images/r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1/tenor.gif',
-    'https://media.tenor.com/images/h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7/tenor.gif',
+    'https://media.giphy.com/media/G3va31oEEnIkM/giphy.gif',
+    'https://media.giphy.com/media/nyGFcsP0kAobm/giphy.gif',
+    'https://media.giphy.com/media/hnNyVPIXgALV6/giphy.gif',
+    'https://media.giphy.com/media/QGc8RgRvMonFm/giphy.gif',
   ],
-
   pat: [
-    'https://media.tenor.com/images/x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3/tenor.gif',
-    'https://media.tenor.com/images/n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9/tenor.gif',
-    'https://media.tenor.com/images/d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5/tenor.gif',
+    'https://media.giphy.com/media/L2z7dnOduqEow/giphy.gif',
+    'https://media.giphy.com/media/109OqaoamDwwXEQ/giphy.gif',
+    'https://media.giphy.com/media/108M7gCS1JSoO4/giphy.gif',
+    'https://media.giphy.com/media/Ye3c10H0R5sQM/giphy.gif',
   ],
-
   slap: [
-    'https://media.tenor.com/images/t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1/tenor.gif',
-    'https://media.tenor.com/images/j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7/tenor.gif',
-    'https://media.tenor.com/images/z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3/tenor.gif',
+    'https://media.giphy.com/media/RXGNsyRb1hDJm/giphy.gif',
+    'https://media.giphy.com/media/Zau0yrl17uzdK/giphy.gif',
+    'https://media.giphy.com/media/tX29X2Dx3sAXS/giphy.gif',
+    'https://media.giphy.com/media/Gf3AUz3eBNbTW/giphy.gif',
   ],
-
-  // Helper function to get random GIF from an array
-  getRandomGif(category) {
-    const gifs = this[category];
-    if (!gifs || gifs.length === 0) {
-      console.warn(`⚠️ No GIFs found for category: ${category}`);
-      return 'https://cdn.discordapp.com/attachments/1110915631720370216/1110915721839185970/Looki_Default.gif';
-    }
-    return gifs[Math.floor(Math.random() * gifs.length)];
-  },
-
-  // Get a set of GIFs for a category
-  getGifs(category) {
-    return this[category] || [];
-  },
+  wink: [
+    'https://media.giphy.com/media/12V5fmTj0tDqH6/giphy.gif',
+    'https://media.giphy.com/media/v0z6ST7vX7g6Q/giphy.gif',
+  ],
 };
+
+function getRandomGif(category) {
+  const gifs = GIFS[category] || [];
+  return gifs.length ? gifs[Math.floor(Math.random() * gifs.length)] : null;
+}
+
+function getGifs(category) {
+  return [...(GIFS[category] || [])];
+}
+
+module.exports = { ...GIFS, getRandomGif, getGifs };

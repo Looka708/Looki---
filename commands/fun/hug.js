@@ -1,41 +1,11 @@
-const { SlashCommandBuilder } = require('discord.js');
-const { createEmbed } = require('../../utils/embedBuilder');
+const { createReactionCommand } = require('../../utils/reactionCommand');
 
-const hugs = [
-  'https://media.giphy.com/media/3bzA1E0FDEq4kY0Tj9/giphy.gif',
-  'https://media.giphy.com/media/lrr9cScdxK0NO/giphy.gif',
-  'https://media.giphy.com/media/od5H3PmEG5EVq/giphy.gif',
-  'https://media.giphy.com/media/PHZ7v9tfQu0o0/giphy.gif',
-  'https://media.giphy.com/media/u9BxQbM5bxvwY/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y1bXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/wnO69asNTeWju/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y1bXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/QFMe6z8i7kYDe/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y1bXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/12x1p95H86qWNW/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y1bXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3M4NpbLcHXv5S/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y1bXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/EvYHJJ4qIn96/giphy.gif'
-];
-
-module.exports = {
+module.exports = createReactionCommand({
   name: 'hug',
-  data: new SlashCommandBuilder()
-    .setName('hug')
-    .setDescription('🤗 give someone a warm hug')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('the cutie to hug')
-        .setRequired(true)
-    ),
-  execute: async (interaction, client) => {
-    const user = interaction.options.getUser('user');
-    const randomHug = hugs[Math.floor(Math.random() * hugs.length)];
-
-    if (user.id === interaction.user.id) {
-      return interaction.reply({ content: 'sending you a self-hug! 🌸', ephemeral: true });
-    }
-
-    const embed = createEmbed('default', client)
-      .setDescription(`**${interaction.user.username}** gives **${user.username}** a big hug! 🤗`)
-      .setImage(randomHug);
-
-    await interaction.reply({ content: `<@${user.id}>`, embeds: [embed] });
-  },
-};
+  title: '🤗 Warm hug',
+  description: 'Give someone a warm hug',
+  targeted: true,
+  targetDescription: 'Person to hug',
+  selfMessage: 'Here is a warm self-hug for you. 🤗',
+  message: (user, target) => `**${user.username}** gives **${target.username}** a big hug!`,
+});

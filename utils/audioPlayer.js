@@ -180,6 +180,11 @@ function handleKazagumoEvents(client) {
           }).catch(err => MusicLogger.logError('playerEmpty - send', err));
         }
 
+        if (player.data.get('stay247')) {
+          player.queue.clear();
+          return;
+        }
+
         player.destroy();
       } catch (error) {
         MusicLogger.logError('playerEmpty', error);

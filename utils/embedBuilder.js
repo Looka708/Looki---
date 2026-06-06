@@ -1,62 +1,50 @@
 const { EmbedBuilder } = require('discord.js');
 
 const CATEGORY_COLORS = {
-  default: 0xFFB6C1, // blush pink / pookie pink
-  info: 0xFFB6C1,
-  moderation: 0xFFB6C1,
-  danger: 0xFFC0CB, // slightly different pink
-  ban: 0xFFC0CB,
-  success: 0xFFB6C1,
-  xp: 0xFFB6C1,
-  levels: 0xFFB6C1,
-  music: 0xFFB6C1, // pookie color for music player
-  fun: 0xFFB6C1,
-  games: 0xFFB6C1,
-  error: 0xFFC0CB,
-  utility: 0xFFB6C1,
-  config: 0xFFB6C1
+  default: 0xF4A7C1,
+  info: 0x8ECAE6,
+  moderation: 0xF4A261,
+  danger: 0xE76F51,
+  ban: 0xE76F51,
+  success: 0x72C69B,
+  xp: 0xFFD166,
+  levels: 0xC77DFF,
+  music: 0xB86BFF,
+  fun: 0xFF8FAB,
+  games: 0x7BDFF2,
+  error: 0xED6A8A,
+  utility: 0x8ECAE6,
+  config: 0xA8DADC,
 };
 
 const CATEGORY_ICONS = {
   default: '🎀',
-  info: '🌸',
-  moderation: '🧸',
-  danger: '🥺',
-  ban: '🦋',
-  success: '✨',
-  xp: '💖',
-  levels: '🎀',
-  music: '🎀', // pookie emoji for music player
-  fun: '🦋',
-  games: '🧸',
-  error: '🥺',
-  utility: '🌸',
-  config: '✨'
+  info: 'ℹ️',
+  moderation: '🛡️',
+  danger: '⚠️',
+  ban: '🔨',
+  success: '✅',
+  xp: '✨',
+  levels: '🏆',
+  music: '🎵',
+  fun: '🌸',
+  games: '🎮',
+  error: '❌',
+  utility: '🧰',
+  config: '⚙️',
 };
 
-const CATEGORY_GIFS = {
-  default: 'https://cdn.discordapp.com/attachments/1110915631720370216/1110915721839185970/Looki_Default.gif',
-  music: 'https://cdn.discordapp.com/attachments/1110915631720370216/1110915721839185970/Looki_Default.gif',
-  success: 'https://cdn.discordapp.com/attachments/1110915631720370216/1110915721839185970/Looki_Default.gif',
-  error: 'https://cdn.discordapp.com/attachments/1110915631720370216/1110915721839185970/Looki_Default.gif',
-  info: 'https://cdn.discordapp.com/attachments/1110915631720370216/1110915721839185970/Looki_Default.gif',
-  moderation: 'https://cdn.discordapp.com/attachments/1110915631720370216/1110915721839185970/Looki_Default.gif',
-  fun: 'https://cdn.discordapp.com/attachments/1110915631720370216/1110915721839185970/Looki_Default.gif',
-};
+// Kept for compatibility with older imports. Embeds no longer receive a
+// remote image automatically; commands should add an intentional image.
+const CATEGORY_GIFS = {};
 
 function createEmbed(category = 'default', client) {
+  const avatar = client?.user?.displayAvatarURL?.();
   const embed = new EmbedBuilder()
     .setColor(CATEGORY_COLORS[category] || CATEGORY_COLORS.default)
-    .setAuthor({ name: 'Looki 🎀', iconURL: client.user.displayAvatarURL() })
-    .setFooter({ text: '🎀 looki~ • made with pookie dust ✨', iconURL: client.user.displayAvatarURL() })
+    .setAuthor({ name: `Looki ${CATEGORY_ICONS[category] || CATEGORY_ICONS.default}`, iconURL: avatar })
+    .setFooter({ text: 'Looki • Helpful, cute, and clear', iconURL: avatar })
     .setTimestamp();
-
-  // Set aesthetic GIF image if it exists for this category
-  if (CATEGORY_GIFS[category]) {
-    embed.setImage(CATEGORY_GIFS[category]);
-  } else {
-    embed.setImage(CATEGORY_GIFS.default);
-  }
 
   return embed;
 }

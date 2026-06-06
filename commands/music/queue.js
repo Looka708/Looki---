@@ -1,38 +1,38 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { createEmbed } = require('../../utils/embedBuilder');
+const { createMusicEmbed, formatDuration } = require('../../utils/musicEmbed');
 
 module.exports = {
   name: 'queue',
   data: new SlashCommandBuilder()
     .setName('queue')
-    .setDescription('See the upcoming songs 📜'),
-  execute: async (interaction, client) => {
+    .setDescription('See the current and upcoming songs'),
+
+  async execute(interaction, client) {
     const player = client.kazagumo.players.get(interaction.guildId);
-
-    if (!player) {
-      const errorEmbed = createEmbed('error', client)
-        .setTitle('🥺 Nothing Playing')
-        .setDescription('No music is currently playing! 🎀');
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+    if (!player?.queue?.current) {
+      return interaction.reply({
+        embeds: [createMusicEmbed(client, {
+          type: 'error',
+          title: 'The queue is empty',
+          description: 'Add a song with `/play` and it will appear here.',
+        })],
+        ephemeral: true,
+      });
     }
 
-    try {
-      const current = player.queue.current;
-      const q = player.queue
-        .slice(0, 10)
-        .map((track, i) => `**${i + 1}.** [${track.title}](${track.uri}) - \`${new Date(track.length).toISOString().substr(14, 5)}\``)
-        .join('\n');
+    const current = player.queue.current;
+    const upcoming = player.queue.slice(0, 10)
+      .map((track, index) =>
+        `\`${String(index + 1).padStart(2, '0')}\` [${track.title}](${track.uri}) • ${track.author || 'Unknown'} • \`${formatDuration(track.length)}\``)
+      .join('\n');
 
-      const embed = createEmbed('music', client)
-        .setTitle('📜 Current Queue')
-        .setDescription(`**Now Playing:** [${current?.title || 'Unknown'}](${current?.uri || '#'})\n\n${q || 'No more songs in queue! ✨'}`)
-        .setFooter({ text: `Tracks: ${player.queue.length + (current ? 1 : 0)} 🎀` });
+    const embed = createMusicEmbed(client, {
+      title: '🎶 Music Queue',
+      description: `**NOW PLAYING**\n[${current.title}](${current.uri}) • \`${formatDuration(current.length)}\`\n\n**UP NEXT**\n${upcoming || '*The queue ends after this track.*'}`,
+      thumbnail: current.thumbnail,
+      footer: `${player.queue.length + 1} total track(s) • Showing up to 10`,
+    });
 
-      await interaction.reply({ embeds: [embed] });
-      
-    } catch (error) {
-      console.error('Queue error:', error);
-      await interaction.reply({ content: '❌ Error fetching queue.', ephemeral: true });
-    }
+    await interaction.reply({ embeds: [embed] });
   },
 };
