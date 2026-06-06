@@ -1,60 +1,47 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 const { parseDuration } = require('../../utils/duration');
+const { moderationError, sendModLog } = require('../../utils/moderationUtils');
 
 module.exports = {
   name: 'slowmode',
   data: new SlashCommandBuilder()
     .setName('slowmode')
-    .setDescription('🐢 set the channel slowmode')
-    .addStringOption(option =>
-      option.setName('duration')
-        .setDescription('duration (e.g. 5s, 1m, 2h) or 0 to disable')
-        .setRequired(true)
-    )
-    .addChannelOption(option =>
-      option.setName('channel')
-        .setDescription('specific channel (defaults to current)')
-        .setRequired(false)
-    )
+    .setDescription('Set channel slowmode')
+    .addStringOption(option => option.setName('duration').setDescription('Duration like 5s, 1m, 2h, or off').setRequired(true))
+    .addChannelOption(option => option.setName('channel').setDescription('Channel to update'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
-  execute: async (interaction, client) => {
-    const durationInput = interaction.options.getString('duration');
-    const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
-    if (!targetChannel.isTextBased()) {
-      return interaction.reply({ content: 'Slowmode can only be applied to text channels! 🌸', ephemeral: true });
-    }
+  async execute(interaction, client) {
+    const input = interaction.options.getString('duration', true);
+    const channel = interaction.options.getChannel('channel') || interaction.channel;
 
-    let slowmodeSeconds = 0;
-    
-    if (durationInput !== '0' && durationInput.toLowerCase() !== 'off') {
-        const durationMs = parseDuration(durationInput);
-        slowmodeSeconds = Math.floor(durationMs / 1000);
+    if (!channel.isTextBased()) return interaction.reply({ embeds: [moderationError(client, 'Text channel required', 'Slowmode only works in text-based channels.')], flags: 64 });
 
-        if (!slowmodeSeconds || slowmodeSeconds < 0 || slowmodeSeconds > 21600) {
-          const errorEmbed = createEmbed('error', client)
-            .setTitle('🥺 invalid slowmode')
-            .setDescription('slowmode must be between `1s` and `6h` 🎀');
-          return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-        }
+    let seconds = 0;
+    if (!['0', 'off', 'disable', 'disabled'].includes(input.toLowerCase())) {
+      seconds = Math.floor((parseDuration(input) || 0) / 1000);
+      if (seconds < 1 || seconds > 21600) {
+        return interaction.reply({ embeds: [moderationError(client, 'Invalid slowmode', 'Slowmode must be between `1s` and `6h`, or `off`.')], flags: 64 });
+      }
     }
 
     try {
-      await targetChannel.setRateLimitPerUser(slowmodeSeconds, `Set by ${interaction.user.tag}`);
-
-      const embed = createEmbed('moderation', client)
-        .setTitle('🐢 slowmode updated')
-        .setDescription(slowmodeSeconds === 0 
-          ? `slowmode is now **disabled** in ${targetChannel} ✨` 
-          : `slowmode is now set to **${durationInput}** in ${targetChannel} ✨`);
-
-      await interaction.reply({ embeds: [embed] });
+      await channel.setRateLimitPerUser(seconds, `Set by ${interaction.user.tag}`);
+      await interaction.reply({
+        embeds: [createEmbed('moderation', client)
+          .setTitle('Slowmode updated')
+          .setDescription(seconds === 0 ? `Slowmode is disabled in ${channel}.` : `Slowmode is **${input}** in ${channel}.`)],
+      });
+      await sendModLog(interaction, client, 'Slowmode updated', [
+        { name: 'Channel', value: `${channel}`, inline: true },
+        { name: 'Duration', value: seconds === 0 ? 'Disabled' : `${seconds} seconds`, inline: true },
+        { name: 'Moderator', value: interaction.user.tag, inline: true },
+      ]);
+      return null;
     } catch (error) {
-      console.error(error);
-      const errorEmbed = createEmbed('error', client)
-        .setDescription('hmm that didn\'t work :( try again?');
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      console.error('Slowmode command error:', error);
+      return interaction.reply({ embeds: [moderationError(client, 'Slowmode failed', `Check my channel permissions:\n\`${error.message}\``)], flags: 64 });
     }
   },
 };

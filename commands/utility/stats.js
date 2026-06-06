@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ChannelType } = require('discord.js');
+const { ChannelType, SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 const { getLeaderboard } = require('../../models/XP');
 const { getOrCreateConfig } = require('../../models/ServerConfig');
@@ -7,90 +7,77 @@ module.exports = {
   name: 'stats',
   data: new SlashCommandBuilder()
     .setName('stats')
-    .setDescription('View server statistics and analytics'),
-  execute: async (interaction, client) => {
+    .setDescription('View server statistics and configuration'),
+
+  async execute(interaction, client) {
+    await interaction.deferReply();
+
     try {
-      await interaction.deferReply();
-
       const guild = interaction.guild;
-      const channels = await guild.channels.fetch();
-      const roles = await guild.roles.fetch();
+      const [channels, roles, members, leaderboard, config] = await Promise.all([
+        guild.channels.fetch(),
+        guild.roles.fetch(),
+        guild.members.fetch(),
+        getLeaderboard(guild.id, 10),
+        getOrCreateConfig(guild.id),
+      ]);
 
-      // Member stats
-      const members = await guild.members.fetch();
-      const bots = members.filter(m => m.user.bot).size;
-      const humans = members.filter(m => !m.user.bot).size;
-      const onlineCount = members.filter(m => m.presence?.status === 'online').size;
-
-      // Channel stats
-      const textChannels = channels.filter(c => c.type === ChannelType.GuildText).size;
-      const voiceChannels = channels.filter(c => c.type === ChannelType.GuildVoice).size;
-      const categoryChannels = channels.filter(c => c.type === ChannelType.GuildCategory).size;
-
-      // Role stats
-      const managedRoles = roles.filter(r => r.managed).size;
-      const customRoles = roles.filter(r => !r.managed && r.id !== guild.id).size;
-
-      // XP stats
-      const leaderboard = await getLeaderboard(guild.id, 10);
+      const bots = members.filter(member => member.user.bot).size;
+      const humans = members.size - bots;
+      const online = members.filter(member => member.presence?.status === 'online').size;
+      const textChannels = channels.filter(channel => channel.type === ChannelType.GuildText).size;
+      const voiceChannels = channels.filter(channel => channel.type === ChannelType.GuildVoice).size;
+      const categories = channels.filter(channel => channel.type === ChannelType.GuildCategory).size;
+      const managedRoles = roles.filter(role => role.managed).size;
+      const customRoles = roles.filter(role => !role.managed && role.id !== guild.id).size;
       const topMember = leaderboard[0];
-      
-      // Get server config for modlog
-      const config = await getOrCreateConfig(guild.id);
-      const modlogChannel = config?.modlog_channel ? 
-        guild.channels.cache.get(config.modlog_channel)?.name || 'Deleted' : 'Not Set';
+      const modlog = config?.modlog_channel
+        ? guild.channels.cache.get(config.modlog_channel)?.toString() || 'Deleted channel'
+        : 'Not configured';
+      const features = guild.features.length
+        ? guild.features.slice(0, 15).map(feature => `- ${feature}`).join('\n')
+        : 'No special features';
 
       const embed = createEmbed('info', client)
-        .setTitle(`🎀 ${guild.name} Statistics`)
-        .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
+        .setTitle(`${guild.name} Statistics`)
+        .setThumbnail(guild.iconURL({ size: 256 }))
         .addFields(
-          { 
-            name: '🧸 Members', 
-            value: `**Total:** ${members.size}\n**Humans:** ${humans}\n**Bots:** ${bots}\n**Online:** ${onlineCount}`, 
-            inline: true 
+          {
+            name: 'Members',
+            value: `Total: **${members.size}**\nHumans: **${humans}**\nBots: **${bots}**\nOnline: **${online}**`,
+            inline: true,
           },
-          { 
-            name: '📢 Channels', 
-            value: `**Text:** ${textChannels}\n**Voice:** ${voiceChannels}\n**Categories:** ${categoryChannels}`, 
-            inline: true 
+          {
+            name: 'Channels',
+            value: `Text: **${textChannels}**\nVoice: **${voiceChannels}**\nCategories: **${categories}**`,
+            inline: true,
           },
-          { 
-            name: '🎭 Roles', 
-            value: `**Total:** ${roles.size}\n**Custom:** ${customRoles}\n**Managed:** ${managedRoles}`, 
-            inline: true 
+          {
+            name: 'Roles',
+            value: `Total: **${roles.size}**\nCustom: **${customRoles}**\nManaged: **${managedRoles}**`,
+            inline: true,
           },
-          { 
-            name: '📅 Created', 
-            value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, 
-            inline: true 
+          { name: 'Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true },
+          { name: 'Verification level', value: `${guild.verificationLevel}`, inline: true },
+          { name: 'Moderation log', value: modlog, inline: true },
+          {
+            name: 'Top XP member',
+            value: topMember
+              ? `<@${topMember.user_id}> | Level ${topMember.level} | ${topMember.xp.toLocaleString()} XP`
+              : 'No XP data yet',
           },
-          { 
-            name: '🔍 Verification', 
-            value: `**Level:** ${guild.verificationLevel}\n**2FA:** ${guild.explicitContentFilter}`, 
-            inline: true 
-          },
-          { 
-            name: '✨ Configuration', 
-            value: `**Modlog:** ${modlogChannel}\n**Members Tracked:** ${leaderboard.length}`, 
-            inline: true 
-          },
-          { 
-            name: '✨ Top Member', 
-            value: topMember ? `<@${topMember.user_id}> - Level ${topMember.level} (${topMember.xp.toLocaleString()} XP)` : 'No data yet', 
-            inline: false 
-          },
-          { 
-            name: '🎪 Server Features', 
-            value: guild.features.length > 0 ? guild.features.map(f => `✓ ${f}`).join('\n') : 'No special features', 
-            inline: false 
-          }
+          { name: 'Server features', value: features.slice(0, 1024) },
         )
         .setFooter({ text: `Server ID: ${guild.id}` });
 
-      await interaction.editReply({ embeds: [embed] });
+      return interaction.editReply({ embeds: [embed] });
     } catch (error) {
       console.error('Stats error:', error);
-      await interaction.editReply({ content: 'Error fetching server statistics.' });
+      return interaction.editReply({
+        embeds: [createEmbed('error', client)
+          .setTitle('Statistics unavailable')
+          .setDescription('I could not fetch the server statistics right now.')],
+      });
     }
   },
 };

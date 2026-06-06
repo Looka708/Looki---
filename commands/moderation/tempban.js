@@ -2,104 +2,91 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 const { parseDuration } = require('../../utils/duration');
 const TemporaryBan = require('../../models/TemporaryBan');
+const { getNextCaseId } = require('../../models/Warning');
+const { moderationError, sendModLog } = require('../../utils/moderationUtils');
 
 module.exports = {
   name: 'tempban',
   data: new SlashCommandBuilder()
     .setName('tempban')
-    .setDescription('🔨 temporarily ban a user from the server')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('the user to ban')
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option.setName('duration')
-        .setDescription('how long? (e.g. 1d, 1w)')
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option.setName('reason')
-        .setDescription('ban reason')
-        .setRequired(false)
-    )
+    .setDescription('Temporarily ban a user from the server')
+    .addUserOption(option => option.setName('user').setDescription('The user to ban').setRequired(true))
+    .addStringOption(option => option.setName('duration').setDescription('Duration, like 1d or 1w').setRequired(true))
+    .addStringOption(option => option.setName('reason').setDescription('Reason for the ban').setMaxLength(1000))
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
-  execute: async (interaction, client) => {
+
+  async execute(interaction, client) {
+    const user = interaction.options.getUser('user', true);
+    const durationInput = interaction.options.getString('duration', true);
+    const reason = interaction.options.getString('reason') || 'No reason provided';
+    const durationMs = parseDuration(durationInput);
+    await interaction.deferReply();
+
+    if (user.id === interaction.user.id) return interaction.editReply({ embeds: [moderationError(client, 'Cannot ban yourself', 'Choose another user.')] });
+    if (user.id === client.user.id) return interaction.editReply({ embeds: [moderationError(client, 'Cannot ban Looki', 'I cannot ban myself.')] });
+    if (!durationMs || durationMs < 1000) return interaction.editReply({ embeds: [moderationError(client, 'Invalid duration', 'Try a duration like `1d` or `1w`.')] });
+
+    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+    if (member && !member.bannable) return interaction.editReply({ embeds: [moderationError(client, 'Cannot ban user', 'That user may have a higher role than me.')] });
+
+    const endTime = new Date(Date.now() + durationMs);
+    const endTimestamp = Math.floor(endTime.getTime() / 1000);
+
     try {
-      const targetUser = interaction.options.getUser('user');
-      const durationInput = interaction.options.getString('duration');
-      const reason = interaction.options.getString('reason') || 'no reason provided luv 🌸';
-
-      // Validate self-ban and bot ban
-      if (targetUser.id === interaction.user.id) {
-        return await interaction.reply({ 
-          content: '🥺 You cannot ban yourself!', 
-          ephemeral: true 
-        });
-      }
-
-      if (targetUser.id === client.user.id) {
-        return await interaction.reply({ 
-          content: '😊 You cannot ban me!', 
-          ephemeral: true 
-        });
-      }
-
-      const durationMs = parseDuration(durationInput);
-      if (!durationMs || durationMs < 1000) {
-        return await interaction.reply({ 
-          content: 'Invalid duration! Try `1d` or `1w` 🎀', 
-          ephemeral: true 
-        });
-      }
-
-      const endTime = new Date(Date.now() + durationMs);
-
-      // Pre-emptively DM the user before banning
-      try {
-        const dmEmbed = createEmbed('moderation', client)
-          .setTitle('🔨 You\'ve been temporarily banned')
-          .setDescription(`You were banned from \`${interaction.guild.name}\` 🎀`)
+      const caseId = await getNextCaseId(interaction.guildId);
+      await user.send({
+        embeds: [createEmbed('moderation', client)
+          .setTitle('You were temporarily banned')
+          .setDescription(`You were temporarily banned from ${interaction.guild.name}.`)
           .addFields(
-            { name: '💖 Duration', value: `\`${durationInput}\``, inline: true },
-            { name: '✦ Unban Time', value: `<t:${Math.floor(endTime.getTime() / 1000)}:F>`, inline: true },
-            { name: '📝 Reason', value: reason }
-          );
-        await targetUser.send({ embeds: [dmEmbed] });
-      } catch (e) {
-        // DMs blocked - that's fine, continue with ban
+            { name: 'Duration', value: durationInput, inline: true },
+            { name: 'Unban time', value: `<t:${endTimestamp}:F>`, inline: true },
+            { name: 'Reason', value: reason },
+          )],
+      }).catch(() => null);
+
+      await interaction.guild.members.ban(user.id, { reason: `Tempban by ${interaction.user.tag}: ${reason}` });
+      try {
+        await TemporaryBan.createTempBan(
+          interaction.guildId,
+          user.id,
+          endTime,
+          reason,
+          interaction.user.id,
+          caseId,
+        );
+      } catch (persistenceError) {
+        await interaction.guild.members.unban(
+          user.id,
+          'Temporary ban storage failed; action rolled back',
+        ).catch(rollbackError => {
+          console.error('[TempBan] Failed to roll back ban:', rollbackError);
+        });
+        throw new Error('The temporary ban could not be scheduled, so the ban was rolled back.');
       }
-
-      // Ban the user
-      await interaction.guild.members.ban(targetUser.id, { 
-        reason: `Tempban by ${interaction.user.tag}: ${reason}` 
-      });
-
-      // Store in database for persistence
-      await TemporaryBan.createTempBan(
-        interaction.guildId,
-        targetUser.id,
-        endTime,
-        reason,
-        interaction.user.id
-      );
 
       const embed = createEmbed('moderation', client)
-        .setTitle('🔨 Temporary Ban Issued')
-        .setDescription(`${targetUser} was banned ✨`)
+        .setTitle('Temporary ban issued')
+        .setDescription(`${user.tag} has been banned until <t:${endTimestamp}:F>.`)
         .addFields(
-          { name: '🎀 Duration', value: `\`${durationInput}\``, inline: true },
-          { name: '⏰ Unban Time', value: `<t:${Math.floor(endTime.getTime() / 1000)}:R>`, inline: true },
-          { name: '✦ Reason', value: reason }
+          { name: 'Duration', value: durationInput, inline: true },
+          { name: 'Unban', value: `<t:${endTimestamp}:R>`, inline: true },
+          { name: 'Case', value: `#${caseId}`, inline: true },
+          { name: 'Moderator', value: `${interaction.user.tag}`, inline: true },
+          { name: 'Reason', value: reason },
         );
 
-      await interaction.reply({ embeds: [embed] });
-
+      await interaction.editReply({ embeds: [embed] });
+      await sendModLog(interaction, client, 'Temporary ban logged', [
+        { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
+        { name: 'Moderator', value: `${interaction.user.tag}`, inline: true },
+        { name: 'Case', value: `#${caseId}`, inline: true },
+        { name: 'Unban', value: `<t:${endTimestamp}:F>`, inline: true },
+        { name: 'Reason', value: reason },
+      ]);
     } catch (error) {
-      console.error('❌ [tempban.js] Error:', error);
-      const errorEmbed = createEmbed('error', client)
-        .setDescription('hmm that didn\'t work :( try again?');
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      console.error('Tempban command error:', error);
+      return interaction.editReply({ embeds: [moderationError(client, 'Tempban failed', `Discord rejected the action:\n\`${error.message}\``)] });
     }
   },
 };

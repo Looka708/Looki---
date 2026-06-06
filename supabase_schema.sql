@@ -1,7 +1,6 @@
 -- Looki Bot Supabase Database Schema
--- Run these SQL commands in your Supabase SQL Editor to set up the database
+-- Run this file in the Supabase SQL Editor.
 
--- Warnings Table
 CREATE TABLE IF NOT EXISTS warnings (
   id BIGSERIAL PRIMARY KEY,
   guild_id TEXT NOT NULL,
@@ -20,7 +19,6 @@ CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id
 CREATE INDEX IF NOT EXISTS idx_warnings_case_id ON warnings(case_id);
 CREATE INDEX IF NOT EXISTS idx_warnings_type ON warnings(type);
 
--- XP Table
 CREATE TABLE IF NOT EXISTS xp (
   id BIGSERIAL PRIMARY KEY,
   guild_id TEXT NOT NULL,
@@ -36,7 +34,6 @@ CREATE TABLE IF NOT EXISTS xp (
 CREATE INDEX IF NOT EXISTS idx_xp_guild_user ON xp(guild_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_xp_guild_xp ON xp(guild_id, xp DESC);
 
--- Server Config Table
 CREATE TABLE IF NOT EXISTS server_config (
   id BIGSERIAL PRIMARY KEY,
   guild_id TEXT NOT NULL UNIQUE,
@@ -50,7 +47,7 @@ CREATE TABLE IF NOT EXISTS server_config (
   xp_blacklist_roles TEXT[] DEFAULT ARRAY[]::TEXT[],
   xp_blacklist_channels TEXT[] DEFAULT ARRAY[]::TEXT[],
   levelup_channel TEXT,
-  levelup_message TEXT DEFAULT '🎉 {user} just reached level {level}!',
+  levelup_message TEXT DEFAULT '{user} just reached level {level}!',
   automod_enabled BOOLEAN DEFAULT FALSE,
   automod_antilinks BOOLEAN DEFAULT FALSE,
   automod_antiswear BOOLEAN DEFAULT FALSE,
@@ -68,7 +65,6 @@ CREATE TABLE IF NOT EXISTS server_config (
 
 CREATE INDEX IF NOT EXISTS idx_server_config_guild_id ON server_config(guild_id);
 
--- Giveaways Table
 CREATE TABLE IF NOT EXISTS giveaways (
   id BIGSERIAL PRIMARY KEY,
   guild_id TEXT NOT NULL,
@@ -88,7 +84,6 @@ CREATE TABLE IF NOT EXISTS giveaways (
 CREATE INDEX IF NOT EXISTS idx_giveaways_guild_id ON giveaways(guild_id);
 CREATE INDEX IF NOT EXISTS idx_giveaways_ended ON giveaways(ended, end_time);
 
--- User Music Favorites Table
 CREATE TABLE IF NOT EXISTS user_favorites (
   id BIGSERIAL PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -103,7 +98,6 @@ CREATE TABLE IF NOT EXISTS user_favorites (
 CREATE INDEX IF NOT EXISTS idx_user_favorites_user_id ON user_favorites(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_favorites_added_at ON user_favorites(user_id, added_at DESC);
 
--- User Music Stats Table
 CREATE TABLE IF NOT EXISTS user_music_stats (
   id BIGSERIAL PRIMARY KEY,
   user_id TEXT NOT NULL UNIQUE,
@@ -118,16 +112,15 @@ CREATE TABLE IF NOT EXISTS user_music_stats (
 
 CREATE INDEX IF NOT EXISTS idx_user_music_stats_user_id ON user_music_stats(user_id);
 
--- Server Music Settings Table
 CREATE TABLE IF NOT EXISTS server_music_settings (
   id BIGSERIAL PRIMARY KEY,
   guild_id TEXT NOT NULL UNIQUE,
   default_volume INTEGER DEFAULT 50,
-    dj_role_id TEXT,
-    music_channel_id TEXT,
-    music_text_channel_id TEXT,
-    stay_247 BOOLEAN DEFAULT FALSE,
-    announce_songs BOOLEAN DEFAULT TRUE,
+  dj_role_id TEXT,
+  music_channel_id TEXT,
+  music_text_channel_id TEXT,
+  stay_247 BOOLEAN DEFAULT FALSE,
+  announce_songs BOOLEAN DEFAULT TRUE,
   autoplay_enabled BOOLEAN DEFAULT FALSE,
   bitrate_quality TEXT DEFAULT 'high' CHECK (bitrate_quality IN ('low', 'medium', 'high')),
   loop_default_mode INTEGER DEFAULT 0,
@@ -135,13 +128,12 @@ CREATE TABLE IF NOT EXISTS server_music_settings (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-  CREATE INDEX IF NOT EXISTS idx_server_music_settings_guild_id ON server_music_settings(guild_id);
+ALTER TABLE server_music_settings
+  ADD COLUMN IF NOT EXISTS music_text_channel_id TEXT,
+  ADD COLUMN IF NOT EXISTS stay_247 BOOLEAN DEFAULT FALSE;
 
-  ALTER TABLE server_music_settings
-    ADD COLUMN IF NOT EXISTS music_text_channel_id TEXT,
-    ADD COLUMN IF NOT EXISTS stay_247 BOOLEAN DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_server_music_settings_guild_id ON server_music_settings(guild_id);
 
--- Server Music Playlists Table
 CREATE TABLE IF NOT EXISTS server_playlists (
   id BIGSERIAL PRIMARY KEY,
   guild_id TEXT NOT NULL,
@@ -158,7 +150,6 @@ CREATE TABLE IF NOT EXISTS server_playlists (
 CREATE INDEX IF NOT EXISTS idx_server_playlists_guild_id ON server_playlists(guild_id);
 CREATE INDEX IF NOT EXISTS idx_server_playlists_creator ON server_playlists(creator_id);
 
--- Music Activity Log (for diagnostics)
 CREATE TABLE IF NOT EXISTS music_activity_log (
   id BIGSERIAL PRIMARY KEY,
   guild_id TEXT NOT NULL,
@@ -172,7 +163,6 @@ CREATE TABLE IF NOT EXISTS music_activity_log (
 CREATE INDEX IF NOT EXISTS idx_music_activity_log_guild_id ON music_activity_log(guild_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_music_activity_log_action ON music_activity_log(action);
 
--- Add RLS (Row Level Security) policies if needed
 ALTER TABLE warnings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE xp ENABLE ROW LEVEL SECURITY;
 ALTER TABLE server_config ENABLE ROW LEVEL SECURITY;

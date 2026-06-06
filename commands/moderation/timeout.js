@@ -1,90 +1,69 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 const { parseDuration } = require('../../utils/duration');
+const { moderationError, sendModLog } = require('../../utils/moderationUtils');
+const { createWarning, getNextCaseId } = require('../../models/Warning');
 
 module.exports = {
   name: 'timeout',
   data: new SlashCommandBuilder()
     .setName('timeout')
-    .setDescription('🕐 put someone in time-out (mute) 🎀')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('the user to timeout')
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option.setName('duration')
-        .setDescription('duration (e.g. 10m, 1h, 1d)')
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option.setName('reason')
-        .setDescription('why are they in time-out?')
-        .setRequired(false)
-    )
+    .setDescription('Temporarily timeout a user')
+    .addUserOption(option => option.setName('user').setDescription('The user to timeout').setRequired(true))
+    .addStringOption(option => option.setName('duration').setDescription('Duration, like 10m, 1h, or 1d').setRequired(true))
+    .addStringOption(option => option.setName('reason').setDescription('Reason for the timeout').setMaxLength(1000))
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
-  execute: async (interaction, client) => {
-    const targetUser = interaction.options.getUser('user');
-    const durationInput = interaction.options.getString('duration');
-    const reason = interaction.options.getString('reason') || 'no reason provided luv 🌸';
 
+  async execute(interaction, client) {
+    const user = interaction.options.getUser('user', true);
+    const durationInput = interaction.options.getString('duration', true);
+    const reason = interaction.options.getString('reason') || 'No reason provided';
     const durationMs = parseDuration(durationInput);
+    await interaction.deferReply();
+
     if (!durationMs || durationMs < 1000 || durationMs > 28 * 24 * 60 * 60 * 1000) {
-      const errorEmbed = createEmbed('error', client)
-        .setTitle('🥺 invalid duration')
-        .setDescription('duration must be between 1s and 28d 🎀. try `10m` or `1h`!');
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      return interaction.editReply({ embeds: [moderationError(client, 'Invalid duration', 'Duration must be between `1s` and `28d`.')] });
     }
 
-    const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
-
-    if (!member) {
-      const errorEmbed = createEmbed('error', client)
-        .setDescription('i couldn\'t find that user in the server :(');
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-    }
-
-    if (member.id === interaction.user.id) {
-       return interaction.reply({ content: "you can't mute yourself bestie! 🌸", ephemeral: true });
-    }
-
-    if (!member.moderatable) {
-      const errorEmbed = createEmbed('error', client)
-        .setDescription('i can\'t timeout that user! they might have a higher role than me ✨');
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-    }
+    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+    if (!member) return interaction.editReply({ embeds: [moderationError(client, 'User not found', 'That user is not in this server.')] });
+    if (user.id === interaction.user.id) return interaction.editReply({ embeds: [moderationError(client, 'Cannot timeout yourself', 'Choose another user.')] });
+    if (user.id === client.user.id) return interaction.editReply({ embeds: [moderationError(client, 'Cannot timeout Looki', 'I cannot timeout myself.')] });
+    if (!member.moderatable) return interaction.editReply({ embeds: [moderationError(client, 'Cannot timeout user', 'That user may have a higher role than me.')] });
 
     try {
       await member.timeout(durationMs, `${interaction.user.tag}: ${reason}`);
-
-      const embed = createEmbed('moderation', client)
-        .setTitle('🕐 time-out issued')
-        .setDescription(`${targetUser} is now taking a little break ✨`)
-        .addFields(
-          { name: '🎀 Duration', value: `\`${durationInput}\``, inline: true },
-          { name: '✦ Reason', value: reason, inline: true }
-        )
-        .setImage('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnhscXFqZWZqejVqZWZqejVqZWZqejVqZWZqejVqZWZqJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/6rX85pTWUf9V6/giphy.gif');
-
-      await interaction.reply({ embeds: [embed] });
-
+      let caseId = null;
       try {
-        const dmEmbed = createEmbed('moderation', client)
-          .setTitle('🕐 you\'ve been put in time-out')
-          .setDescription(`you were muted in \`${interaction.guild.name}\` 🎀`)
-          .addFields(
-            { name: '💖 Duration', value: `\`${durationInput}\``, inline: true },
-            { name: '✦ Reason', value: reason, inline: true }
-          );
-        await targetUser.send({ embeds: [dmEmbed] });
-      } catch (e) {
-        // they have dms blocked
+        caseId = await getNextCaseId(interaction.guildId);
+        await createWarning(interaction.guildId, user.id, reason, interaction.user.id, caseId, 'mute', durationMs);
+      } catch (logError) {
+        console.error('[Timeout] Action succeeded but case logging failed:', logError);
       }
+      const until = Math.floor((Date.now() + durationMs) / 1000);
+      const embed = createEmbed('moderation', client)
+        .setTitle('Timeout issued')
+        .setDescription(`${user} has been timed out.`)
+        .addFields(
+          { name: 'Duration', value: `\`${durationInput}\``, inline: true },
+          { name: 'Ends', value: `<t:${until}:R>`, inline: true },
+          { name: 'Case', value: caseId ? `#${caseId}` : 'Not recorded', inline: true },
+          { name: 'Moderator', value: `${interaction.user.tag}`, inline: true },
+          { name: 'Reason', value: reason },
+        );
+
+      await interaction.editReply({ embeds: [embed] });
+      await sendModLog(interaction, client, 'Timeout logged', [
+        { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
+        { name: 'Moderator', value: `${interaction.user.tag}`, inline: true },
+        { name: 'Case', value: caseId ? `#${caseId}` : 'Not recorded', inline: true },
+        { name: 'Ends', value: `<t:${until}:F>`, inline: true },
+        { name: 'Reason', value: reason },
+      ]);
+      await user.send({ embeds: [createEmbed('moderation', client).setTitle('You were timed out').setDescription(`You were timed out in ${interaction.guild.name}.`).addFields({ name: 'Duration', value: durationInput }, { name: 'Reason', value: reason })] }).catch(() => null);
     } catch (error) {
-      console.error(error);
-      const errorEmbed = createEmbed('error', client)
-        .setDescription('hmm that didn\'t work :( try again?');
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      console.error('Timeout command error:', error);
+      return interaction.editReply({ embeds: [moderationError(client, 'Timeout failed', `Discord rejected the action:\n\`${error.message}\``)] });
     }
   },
 };

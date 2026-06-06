@@ -1,122 +1,108 @@
-const { createEmbed, CATEGORY_GIFS } = require('./embedBuilder');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const UserFavorites = require('../models/UserFavorites');
+const { createEmbed } = require('./embedBuilder');
 const MusicLogger = require('./musicLogger');
 
-// ── Helpers ──────────────────────────────────────────────
 function formatDuration(ms) {
   if (!ms || ms <= 0) return '0:00';
   const totalSecs = Math.floor(ms / 1000);
   const hours = Math.floor(totalSecs / 3600);
   const mins = Math.floor((totalSecs % 3600) / 60);
   const secs = totalSecs % 60;
-  if (hours > 0) {
-    return `${hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  }
-  return `${mins}:${String(secs).padStart(2, '0')}`;
+  return hours
+    ? `${hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    : `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
 function buildMusicControls() {
   const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('music_previous').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('music_pause_resume').setEmoji('🌸').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('music_skip').setEmoji('✨').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('music_loop').setEmoji('🦋').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('music_shuffle').setLabel('Shuffle').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('music_previous').setLabel('Previous').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('music_pause_resume').setLabel('Pause/Resume').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('music_skip').setLabel('Skip').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('music_loop').setLabel('Loop').setStyle(ButtonStyle.Secondary),
   );
+
   const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('music_clear').setEmoji('🧹').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('music_vol_down').setEmoji('◀️').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId('music_vol_up').setEmoji('🎀').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('music_like').setEmoji('🤍').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('music_clear').setLabel('Clear').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('music_vol_down').setLabel('Vol -').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('music_stop').setLabel('Stop').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('music_vol_up').setLabel('Vol +').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('music_like').setLabel('Favorite').setStyle(ButtonStyle.Secondary),
   );
+
   return [row1, row2];
 }
 
-/**
- * Fix for "guild already has connection" bug.
- * Cleans up existing stuck players before joining.
- */
 async function safeJoin(kazagumo, guildId, channelId, shardId = 0) {
-  // Destroy existing player if stuck
   const existing = kazagumo.players.get(guildId);
   if (existing) {
     await existing.destroy();
-    // Brief wait for cleanup
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
 
-  return await kazagumo.createPlayer({
+  return kazagumo.createPlayer({
     guildId,
     voiceId: channelId,
-    textId: null, // set later in command
+    textId: null,
     shardId,
-    deaf: true
+    deaf: true,
   });
 }
 
-// ── Main Handler ─────────────────────────────────────────
 function handleKazagumoEvents(client) {
   client.kazagumo.shoukaku
-
-    // ── Shoukaku Node Events ──────────────────────────────
-    .on('ready', (name) => {
-      console.log(`🌸 [Kazagumo/Shoukaku] Node "${name}" connected!`);
+    .on('ready', name => {
+      console.log(`[Kazagumo/Shoukaku] Node "${name}" connected.`);
     })
     .on('error', (name, error) => {
-      console.error(`🥺 [Kazagumo/Shoukaku] Node "${name}" error: ${error?.message || error}`);
+      console.error(`[Kazagumo/Shoukaku] Node "${name}" error: ${error?.message || error}`);
     })
     .on('close', (name, code, reason) => {
-      console.warn(`⚠️ [Kazagumo/Shoukaku] Node "${name}" closed (Code: ${code}). Reason: ${reason}`);
+      console.warn(`[Kazagumo/Shoukaku] Node "${name}" closed (${code}). Reason: ${reason}`);
     })
     .on('disconnect', (name, moved) => {
-      console.warn(`⚠️ [Kazagumo/Shoukaku] Node "${name}" disconnected. Moved: ${moved}`);
+      console.warn(`[Kazagumo/Shoukaku] Node "${name}" disconnected. Moved: ${moved}`);
     });
 
   client.kazagumo
-
-    // ── Player Start ───────────────────────────────────────
     .on('playerStart', async (player, track) => {
       try {
         const channel = client.channels.cache.get(player.textId);
         if (!channel) return;
 
-        const currentNowPlaying = player.data.get('nowPlaying');
-        if (currentNowPlaying) {
-           player.data.set('previousTrack', currentNowPlaying);
-        }
+        const previous = player.data.get('nowPlaying');
+        if (previous) player.data.set('previousTrack', previous);
         player.data.set('nowPlaying', track);
 
         const requester = track.requester;
         const requesterTag = requester?.tag || requester?.username || 'Unknown User';
         const requesterAvatar = requester?.displayAvatarURL?.() || null;
 
-        const playEmbed = createEmbed('music', client)
+        const embed = createEmbed('music', client)
           .setAuthor({
-            name: '🎀 Now Playing 🎀',
+            name: 'Now Playing',
             iconURL: requesterAvatar || client.user.displayAvatarURL(),
           })
           .setTitle(track.title)
           .setURL(track.uri)
-          .setColor(0xFFB6C1)
-          .setThumbnail(track.thumbnail || CATEGORY_GIFS?.music || client.user.displayAvatarURL())
+          .setColor(0xB86BFF)
+          .setThumbnail(track.thumbnail || client.user.displayAvatarURL())
           .addFields(
-            { name: '🦋 Artist', value: `> **${track.author || 'Unknown'}**`, inline: true },
-            { name: '💖 Duration', value: `> **${formatDuration(track.length)}**`, inline: true },
-            { name: '🧸 Requested by', value: `> **${requesterTag}**`, inline: true }
+            { name: 'Artist', value: `> **${track.author || 'Unknown'}**`, inline: true },
+            { name: 'Duration', value: `> **${formatDuration(track.length)}**`, inline: true },
+            { name: 'Requested by', value: `> **${requesterTag}**`, inline: true },
           )
-          .setImage(track.thumbnail || CATEGORY_GIFS?.music || null)
           .setFooter({
-            text: `🎀 looki~ • ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`,
+            text: `Looki Music • ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`,
             iconURL: client.user.displayAvatarURL(),
           });
 
         const message = await channel.send({
-          embeds: [playEmbed],
+          embeds: [embed],
           components: buildMusicControls(),
-        }).catch(err => MusicLogger.logError('playerStart - send', err, { guildId: player.guildId }));
+        }).catch(error => MusicLogger.logError('playerStart - send', error, { guildId: player.guildId }));
 
-        // Store message ID to disable buttons later
         if (message) player.data.set('messageId', message.id);
 
         MusicLogger.logSuccess('playerStart', `Now playing ${track.title}`, {
@@ -125,59 +111,31 @@ function handleKazagumoEvents(client) {
         });
         MusicLogger.logMusicActivity(player.guildId, 'play', { name: track.title });
 
+        if (track.requester?.id) {
+          await UserFavorites.recordPlay(track.requester.id, {
+            name: track.title,
+            url: track.uri,
+            uploader: { name: track.author || 'Unknown' },
+          }, track.length || 0);
+        }
       } catch (error) {
         MusicLogger.logError('playerStart', error);
       }
     })
-
-    // ── Player End — disable buttons on old message ────────
-    .on('playerEnd', async (player) => {
-      try {
-        const messageId = player.data.get('messageId');
-        if (messageId) {
-          const channel = client.channels.cache.get(player.textId);
-          if (channel) {
-            const msg = await channel.messages.fetch(messageId).catch(() => null);
-            if (msg) {
-              const disabledRows = buildMusicControls().map(row => {
-                row.components.forEach(btn => btn.setDisabled(true));
-                return row;
-              });
-              await msg.edit({ components: disabledRows }).catch(() => { });
-            }
-          }
-          player.data.delete('messageId');
-        }
-      } catch (error) {
-        MusicLogger.logError('playerEnd', error);
-      }
+    .on('playerEnd', async player => {
+      await disablePreviousControls(client, player);
     })
-
-    // ── Player Empty ──────────────────────────────────────
-    .on('playerEmpty', async (player) => {
+    .on('playerEmpty', async player => {
       try {
-        const messageId = player.data.get('messageId');
-        if (messageId) {
-          const channel = client.channels.cache.get(player.textId);
-          if (channel) {
-            const msg = await channel.messages.fetch(messageId).catch(() => null);
-            if (msg) {
-              const disabledRows = buildMusicControls().map(row => {
-                row.components.forEach(btn => btn.setDisabled(true));
-                return row;
-              });
-              await msg.edit({ components: disabledRows }).catch(() => { });
-            }
-          }
-        }
+        await disablePreviousControls(client, player);
 
         const channel = client.channels.cache.get(player.textId);
         if (channel) {
           await channel.send({
             embeds: [createEmbed('music', client)
-              .setTitle('🎀 Queue Finished')
-              .setDescription('All songs have been played! Add more with `/play` ✨')]
-          }).catch(err => MusicLogger.logError('playerEmpty - send', err));
+              .setTitle('Queue finished')
+              .setDescription('All songs have been played. Add more with `/play`.')],
+          }).catch(error => MusicLogger.logError('playerEmpty - send', error));
         }
 
         if (player.data.get('stay247')) {
@@ -190,23 +148,40 @@ function handleKazagumoEvents(client) {
         MusicLogger.logError('playerEmpty', error);
       }
     })
-
-    // ── Player Error ──────────────────────────────────────
     .on('playerError', async (player, track, error) => {
       try {
-        console.error(`🥺 [Kazagumo] Player error: ${error?.message || error}`);
+        console.error(`[Kazagumo] Player error: ${error?.message || error}`);
         const channel = client.channels.cache.get(player.textId);
         if (channel) {
           await channel.send({
             embeds: [createEmbed('error', client)
-              .setTitle('🥺 Track Error')
-              .setDescription(`Failed to play **${track?.title || 'Unknown'}**. Skipping... ✨`)]
-          }).catch(() => { });
+              .setTitle('Track error')
+              .setDescription(`Failed to play **${track?.title || 'Unknown'}**. Skipping...`)],
+          }).catch(() => null);
         }
-      } catch (err) {
-        MusicLogger.logError('playerError', err);
+      } catch (sendError) {
+        MusicLogger.logError('playerError', sendError);
       }
     });
 }
 
-module.exports = { handleKazagumoEvents, safeJoin };
+async function disablePreviousControls(client, player) {
+  const messageId = player.data.get('messageId');
+  if (!messageId) return;
+
+  const channel = client.channels.cache.get(player.textId);
+  if (!channel) return;
+
+  const message = await channel.messages.fetch(messageId).catch(() => null);
+  if (!message) return;
+
+  const disabledRows = buildMusicControls().map(row => {
+    row.components.forEach(button => button.setDisabled(true));
+    return row;
+  });
+
+  await message.edit({ components: disabledRows }).catch(() => null);
+  player.data.delete('messageId');
+}
+
+module.exports = { buildMusicControls, handleKazagumoEvents, safeJoin };

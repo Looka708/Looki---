@@ -15,7 +15,7 @@ function progressBar(position = 0, duration = 0, size = 14) {
   if (!duration || duration <= 0) return 'LIVE';
   const ratio = Math.min(Math.max(position / duration, 0), 1);
   const marker = Math.min(Math.round(ratio * (size - 1)), size - 1);
-  return Array.from({ length: size }, (_, index) => index === marker ? '●' : '━').join('');
+  return Array.from({ length: size }, (_, index) => index === marker ? 'O' : '-').join('');
 }
 
 function requesterName(track) {
@@ -29,15 +29,14 @@ function requesterName(track) {
 function createMusicEmbed(client, options = {}) {
   const embed = createEmbed(options.type === 'error' ? 'error' : 'music', client)
     .setColor(options.type === 'error' ? 0xED6A8A : 0xB86BFF)
-    .setImage(null)
     .setAuthor({
       name: options.type === 'error'
-        ? 'Looki Music • Something went wrong'
-        : 'Looki Music • Your listening session',
+        ? 'Looki Music | Something went wrong'
+        : 'Looki Music | Your listening session',
       iconURL: client.user.displayAvatarURL(),
     })
     .setFooter({
-      text: options.footer || 'Looki Music • /queue to see what is next',
+      text: options.footer || 'Looki Music | /queue to see what is next',
       iconURL: client.user.displayAvatarURL(),
     });
 
@@ -55,10 +54,10 @@ function createTrackEmbed(client, track, player, title = 'Now Playing') {
     : `**${track?.title || 'Unknown track'}**`;
 
   return createMusicEmbed(client, {
-    title: `🎵 ${title}`,
+    title,
     description: `${link}\n\n${progressBar(position, duration)}\n\`${formatDuration(position)} / ${formatDuration(duration)}\``,
     thumbnail: track?.thumbnail,
-    footer: `Volume ${player?.volume ?? 100}% • Loop ${String(player?.loop || 'off').toUpperCase()}`,
+    footer: `Volume ${player?.volume ?? 100}% | Loop ${String(player?.loop || 'off').toUpperCase()}`,
   }).addFields(
     { name: 'Artist', value: track?.author || 'Unknown', inline: true },
     { name: 'Requested by', value: requesterName(track), inline: true },

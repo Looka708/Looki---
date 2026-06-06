@@ -1,41 +1,36 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { createEmbed } = require('../../utils/embedBuilder');
+const ServerMusicSettings = require('../../models/ServerMusicSettings');
+const { createMusicEmbed } = require('../../utils/musicEmbed');
+const { requirePlayer, requireSameVoice } = require('../../utils/musicCommandUtils');
 
 module.exports = {
   name: 'volume',
   data: new SlashCommandBuilder()
     .setName('volume')
-    .setDescription('Adjust the music volume 🎀')
-    .addIntegerOption(option =>
-      option.setName('amount')
-        .setDescription('Volume percentage (0-100)')
-        .setRequired(true)
-        .setMinValue(0)
-        .setMaxValue(100)
-    ),
-  execute: async (interaction, client) => {
-    const player = client.kazagumo.players.get(interaction.guildId);
+    .setDescription('Adjust music volume')
+    .addIntegerOption(option => option
+      .setName('amount')
+      .setDescription('Volume percentage (0-100)')
+      .setRequired(true)
+      .setMinValue(0)
+      .setMaxValue(100)),
 
-    if (!player) {
-      const errorEmbed = createEmbed('error', client)
-        .setTitle('🥺 Nothing Playing')
-        .setDescription('No music is currently playing! 🎀');
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-    }
+  async execute(interaction, client) {
+    const { player, error } = requirePlayer(interaction, client, { requireTrack: false });
+    if (error) return interaction.reply({ embeds: [error], flags: 64 });
 
-    try {
-      const amount = interaction.options.getInteger('amount');
-      player.setVolume(amount);
+    const voiceCheck = requireSameVoice(interaction, client, player);
+    if (voiceCheck.error) return interaction.reply({ embeds: [voiceCheck.error], flags: 64 });
 
-      const volEmbed = createEmbed('music', client)
-        .setTitle('🔊 Volume Adjusted')
-        .setDescription(`Set the volume to **${amount}%** ✨`);
-      
-      await interaction.reply({ embeds: [volEmbed] });
-      
-    } catch (error) {
-       console.error('Volume error:', error);
-       await interaction.reply({ content: '❌ Failed to set volume.', ephemeral: true });
-    }
+    const amount = interaction.options.getInteger('amount', true);
+    player.setVolume(amount);
+    await ServerMusicSettings.setDefaultVolume(interaction.guildId, amount).catch(() => null);
+
+    return interaction.reply({
+      embeds: [createMusicEmbed(client, {
+        title: 'Volume updated',
+        description: `Volume is now **${amount}%**.`,
+      })],
+    });
   },
 };

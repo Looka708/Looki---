@@ -16,7 +16,7 @@ module.exports = {
           title: 'The queue is empty',
           description: 'Add a song with `/play` and it will appear here.',
         })],
-        ephemeral: true,
+        flags: 64,
       });
     }
 

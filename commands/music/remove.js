@@ -1,80 +1,60 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { createEmbed } = require('../../utils/embedBuilder');
+const { createMusicEmbed, formatDuration } = require('../../utils/musicEmbed');
+const { canManageMusic, requirePlayer, requireSameVoice } = require('../../utils/musicCommandUtils');
 
 module.exports = {
+  name: 'remove',
   data: new SlashCommandBuilder()
     .setName('remove')
-    .setDescription('🗑️ Remove a song from the queue')
-    .addIntegerOption(option =>
-      option.setName('position')
-        .setDescription('Queue position (1-based index)')
-        .setRequired(true)
-        .setMinValue(2) // Can't remove currently playing song
-    ),
+    .setDescription('Remove a song from the upcoming queue')
+    .addIntegerOption(option => option
+      .setName('position')
+      .setDescription('Upcoming queue position from /queue')
+      .setRequired(true)
+      .setMinValue(1)),
 
   async execute(interaction, client) {
-    try {
-      const position = interaction.options.getInteger('position');
-      const voiceChannel = interaction.member.voice.channel;
+    const { player, error } = requirePlayer(interaction, client);
+    if (error) return interaction.reply({ embeds: [error], flags: 64 });
 
-      if (!voiceChannel) {
-        return await interaction.reply({
-          content: '🥺 You must be in a voice channel!',
-          ephemeral: true
-        });
-      }
+    const voiceCheck = requireSameVoice(interaction, client, player);
+    if (voiceCheck.error) return interaction.reply({ embeds: [voiceCheck.error], flags: 64 });
 
-      const player = client.kazagumo.players.get(interaction.guildId);
+    const position = interaction.options.getInteger('position', true);
+    const index = position - 1;
+    const track = player.queue[index];
 
-      if (!player || !player.queue.current) {
-        return await interaction.reply({
-          content: '❌ No music is currently playing!',
-          ephemeral: true
-        });
-      }
-
-      if (voiceChannel.id !== player.voiceId) {
-        return await interaction.reply({
-          content: '🥺 You must be in the same voice channel as Looki!',
-          ephemeral: true
-        });
-      }
-
-      // In Kazagumo, the queue index is 0-based
-      const index = position - 1;
-      const trackToRemove = player.queue[index];
-
-      if (!trackToRemove) {
-        return await interaction.reply({
-          content: `❌ Invalid position! Queue has **${player.queue.length}** songs.`,
-          ephemeral: true
-        });
-      }
-
-      // Permission check
-      const isMod = interaction.member.permissions.has('ManageChannels');
-      const isRequester = trackToRemove.requester?.id === interaction.user.id;
-
-      if (!isMod && !isRequester) {
-        return await interaction.reply({
-          content: '🥺 You must be a Moderator or the song requester to remove it!',
-          ephemeral: true
-        });
-      }
-
-      const removedSong = player.queue.remove(index);
-
-      await interaction.reply({
-        embeds: [createEmbed('music', client)
-          .setTitle('🗑️ Song Removed')
-          .setDescription(`Removed **${removedSong.title}** from position **#${position}**`)]
-      });
-    } catch (error) {
-      console.error('Error in remove command:', error);
-      await interaction.reply({
-        content: '❌ Failed to remove song from queue',
-        ephemeral: true
+    if (!track) {
+      return interaction.reply({
+        embeds: [createMusicEmbed(client, {
+          type: 'error',
+          title: 'Invalid queue position',
+          description: `There are only **${player.queue.length}** upcoming track(s).`,
+        })],
+        flags: 64,
       });
     }
+
+    if (!canManageMusic(interaction, track)) {
+      return interaction.reply({
+        embeds: [createMusicEmbed(client, {
+          type: 'error',
+          title: 'Cannot remove that track',
+          description: 'Only moderators or the song requester can remove it.',
+        })],
+        flags: 64,
+      });
+    }
+
+    const removed = player.queue.remove(index);
+    return interaction.reply({
+      embeds: [createMusicEmbed(client, {
+        title: 'Removed from queue',
+        description: `Removed **[${removed.title}](${removed.uri})** from position **#${position}**.`,
+      }).addFields(
+        { name: 'Artist', value: removed.author || 'Unknown', inline: true },
+        { name: 'Duration', value: formatDuration(removed.length), inline: true },
+      )],
+    });
   },
 };

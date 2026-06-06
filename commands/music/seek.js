@@ -1,81 +1,54 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { createEmbed } = require('../../utils/embedBuilder');
+const { createMusicEmbed, formatDuration } = require('../../utils/musicEmbed');
+const { parseSeekTime, requirePlayer, requireSameVoice } = require('../../utils/musicCommandUtils');
 
 module.exports = {
+  name: 'seek',
   data: new SlashCommandBuilder()
     .setName('seek')
-    .setDescription('⏱️ Seek to a specific time in the current song')
-    .addStringOption(option =>
-      option.setName('time')
-        .setDescription('Time position (e.g., 1m30s, 2:45, 45)')
-        .setRequired(true)
-    ),
+    .setDescription('Seek to a specific time in the current song')
+    .addStringOption(option => option
+      .setName('time')
+      .setDescription('Time position, like 1m30s, 2:45, or 45')
+      .setRequired(true)),
 
   async execute(interaction, client) {
-    try {
-      const timeString = interaction.options.getString('time');
-      const voiceChannel = interaction.member.voice.channel;
+    const { player, error } = requirePlayer(interaction, client);
+    if (error) return interaction.reply({ embeds: [error], flags: 64 });
 
-      if (!voiceChannel) {
-        return await interaction.reply({
-          content: '🥺 You must be in a voice channel!',
-          ephemeral: true
-        });
-      }
+    const voiceCheck = requireSameVoice(interaction, client, player);
+    if (voiceCheck.error) return interaction.reply({ embeds: [voiceCheck.error], flags: 64 });
 
-      const player = client.kazagumo.players.get(interaction.guildId);
-
-      if (!player || !player.queue.current) {
-        return await interaction.reply({
-          content: '❌ No music is currently playing!',
-          ephemeral: true
-        });
-      }
-
-      if (voiceChannel.id !== player.voiceId) {
-        return await interaction.reply({
-          content: '🥺 You must be in the same voice channel as Looki!',
-          ephemeral: true
-        });
-      }
-
-      // Parse time string
-      let seconds = 0;
-      if (timeString.includes(':')) {
-        const parts = timeString.split(':');
-        if (parts.length === 2) seconds = parseInt(parts[0]) * 60 + (parseInt(parts[1]) || 0);
-        else if (parts.length === 3) seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + (parseInt(parts[2]) || 0);
-      } else if (timeString.includes('m') || timeString.includes('s') || timeString.includes('h')) {
-        const hourMatch = timeString.match(/(\d+)h/);
-        const minuteMatch = timeString.match(/(\d+)m/);
-        const secondMatch = timeString.match(/(\d+)s/);
-        if (hourMatch) seconds += parseInt(hourMatch[1]) * 3600;
-        if (minuteMatch) seconds += parseInt(minuteMatch[1]) * 60;
-        if (secondMatch) seconds += parseInt(secondMatch[1]);
-      } else if (!isNaN(timeString)) {
-        seconds = parseInt(timeString);
-      }
-
-      if (isNaN(seconds) || seconds < 0) {
-        return await interaction.reply({ content: '❌ Invalid time format!', ephemeral: true });
-      }
-
-      const currentSong = player.queue.current;
-      const duration = currentSong.length / 1000;
-
-      if (seconds > duration) {
-        return await interaction.reply({ content: '❌ Time exceeds song duration!', ephemeral: true });
-      }
-
-      player.seek(seconds * 1000);
-      await interaction.reply({
-        embeds: [createEmbed('music', client)
-          .setTitle('⏱️ Seeked')
-          .setDescription(`⏭️ Jumped to **${seconds}s**`)]
+    const seconds = parseSeekTime(interaction.options.getString('time', true));
+    if (seconds === null || seconds < 0) {
+      return interaction.reply({
+        embeds: [createMusicEmbed(client, {
+          type: 'error',
+          title: 'Invalid time',
+          description: 'Use a format like `1m30s`, `2:45`, or `45`.',
+        })],
+        flags: 64,
       });
-    } catch (error) {
-      console.error('Seek error:', error);
-      await interaction.reply({ content: '❌ Failed to seek', ephemeral: true });
     }
+
+    const durationSeconds = Math.floor((player.queue.current.length || 0) / 1000);
+    if (durationSeconds > 0 && seconds > durationSeconds) {
+      return interaction.reply({
+        embeds: [createMusicEmbed(client, {
+          type: 'error',
+          title: 'Time is past the end',
+          description: `This track is only **${formatDuration(player.queue.current.length)}** long.`,
+        })],
+        flags: 64,
+      });
+    }
+
+    player.seek(seconds * 1000);
+    return interaction.reply({
+      embeds: [createMusicEmbed(client, {
+        title: 'Seeked',
+        description: `Jumped to **${formatDuration(seconds * 1000)}** in **[${player.queue.current.title}](${player.queue.current.uri})**.`,
+      })],
+    });
   },
 };

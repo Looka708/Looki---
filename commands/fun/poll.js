@@ -41,7 +41,7 @@ module.exports = {
       if (!question || !option1 || !option2) {
         return await interaction.reply({
           content: '❌ Question and at least 2 options are required!',
-          ephemeral: true
+          flags: 64
         });
       }
 
@@ -52,7 +52,7 @@ module.exports = {
       if (new Set(optionsArray).size !== optionsArray.length) {
         return await interaction.reply({
           content: '❌ Poll options must be unique!',
-          ephemeral: true
+          flags: 64
         });
       }
 
@@ -81,7 +81,7 @@ module.exports = {
       console.error('❌ [poll.js] Error:', error);
       await interaction.reply({
         content: '❌ Failed to create poll',
-        ephemeral: true
+        flags: 64
       }).catch(() => {});
     }
   },

@@ -1,76 +1,74 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 
+function responseEmbed(client, type, title, description) {
+  return createEmbed(type, client).setTitle(title).setDescription(description);
+}
+
 module.exports = {
   name: 'say',
   data: new SlashCommandBuilder()
     .setName('say')
-    .setDescription('🗣️ make the bot say something pookie (mod+ only)')
-    .addStringOption(option =>
-      option.setName('message')
-        .setDescription('what should i say? (max 1800 chars, no @everyone/@here)')
-        .setRequired(true)
-        .setMaxLength(1800)
-    )
+    .setDescription('Make the bot send a message')
+    .addStringOption(option => option
+      .setName('message')
+      .setDescription('Message to send, up to 1800 characters')
+      .setRequired(true)
+      .setMaxLength(1800))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
-  execute: async (interaction) => {
+
+  async execute(interaction, client) {
+    const message = interaction.options.getString('message', true).trim();
+
+    if (!message) {
+      return interaction.reply({
+        embeds: [responseEmbed(client, 'error', 'Empty message', 'Enter a message for me to send.')],
+        flags: 64,
+      });
+    }
+
+    if (/@everyone|@here/i.test(message)) {
+      return interaction.reply({
+        embeds: [responseEmbed(client, 'error', 'Mass mention blocked', '`@everyone` and `@here` are not allowed.')],
+        flags: 64,
+      });
+    }
+
+    const userMentions = [...new Set(
+      [...message.matchAll(/<@!?(\d+)>/g)].map(match => match[1]),
+    )];
+    if (userMentions.length > 5) {
+      return interaction.reply({
+        embeds: [responseEmbed(client, 'error', 'Too many mentions', 'A `/say` message can mention at most five users.')],
+        flags: 64,
+      });
+    }
+
+    if (/(.)\1{10,}/i.test(message)) {
+      return interaction.reply({
+        embeds: [responseEmbed(client, 'error', 'Message blocked', 'The message contains too much repeated text.')],
+        flags: 64,
+      });
+    }
+
+    await interaction.deferReply({ flags: 64 });
+
     try {
-      const message = interaction.options.getString('message').trim();
-      
-      // Security validations
-      if (message.length === 0) {
-        return await interaction.reply({ content: '❌ Message cannot be empty!', ephemeral: true });
-      }
+      await interaction.channel.send({
+        content: message,
+        allowedMentions: {
+          parse: [],
+          users: userMentions,
+        },
+      });
 
-      // Prevent @everyone and @here mentions
-      if (message.includes('@everyone') || message.includes('@here')) {
-        return await interaction.reply({ 
-          content: '🥺 Cannot use @everyone or @here for security reasons!', 
-          ephemeral: true 
-        });
-      }
-
-      // Warn if excessive mentions (potential spam)
-      const mentionCount = (message.match(/<@!?\d+>/g) || []).length;
-      if (mentionCount > 5) {
-        return await interaction.reply({ 
-          content: `⚠️ Too many mentions (${mentionCount})! Max 5 allowed.`, 
-          ephemeral: true 
-        });
-      }
-
-      // Prevent role/channel mass mentions
-      if (message.includes('$everyone') || message.includes('$here')) {
-        return await interaction.reply({ 
-          content: '🥺 Cannot use mass mentions!', 
-          ephemeral: true 
-        });
-      }
-
-      // Check for repeated characters (spam pattern)
-      const repeatedChars = message.match(/(.)\1{10,}/);
-      if (repeatedChars) {
-        return await interaction.reply({ 
-          content: '🥺 Message contains too much repetition!', 
-          ephemeral: true 
-        });
-      }
-
-      await interaction.reply({ content: 'sending...', ephemeral: true });
-      
-      try {
-        await interaction.channel.send(message);
-        await interaction.editReply({ content: '✨ sent!' });
-      } catch (sendError) {
-        await interaction.editReply({ 
-          content: `❌ Failed to send message: ${sendError.message}` 
-        });
-      }
+      return interaction.editReply({
+        embeds: [responseEmbed(client, 'success', 'Message sent', 'Your message was posted safely.')],
+      });
     } catch (error) {
-      console.error('❌ [say.js] Error:', error);
-      await interaction.reply({ 
-        content: '❌ Failed to process say command',
-        ephemeral: true 
+      console.error('[Say] Failed to send message:', error);
+      return interaction.editReply({
+        embeds: [responseEmbed(client, 'error', 'Send failed', 'I could not post that message in this channel.')],
       });
     }
   },

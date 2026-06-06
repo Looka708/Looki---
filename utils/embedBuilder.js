@@ -18,35 +18,38 @@ const CATEGORY_COLORS = {
 };
 
 const CATEGORY_ICONS = {
-  default: '🎀',
-  info: 'ℹ️',
-  moderation: '🛡️',
-  danger: '⚠️',
-  ban: '🔨',
-  success: '✅',
-  xp: '✨',
-  levels: '🏆',
-  music: '🎵',
-  fun: '🌸',
-  games: '🎮',
-  error: '❌',
-  utility: '🧰',
-  config: '⚙️',
+  default: 'Looki',
+  info: 'Info',
+  moderation: 'Moderation',
+  danger: 'Warning',
+  ban: 'Moderation',
+  success: 'Success',
+  xp: 'XP',
+  levels: 'Levels',
+  music: 'Music',
+  fun: 'Fun',
+  games: 'Games',
+  error: 'Error',
+  utility: 'Utility',
+  config: 'Settings',
 };
 
-// Kept for compatibility with older imports. Embeds no longer receive a
-// remote image automatically; commands should add an intentional image.
+// Kept for compatibility with older imports. Commands add intentional images.
 const CATEGORY_GIFS = {};
 
 function createEmbed(category = 'default', client) {
   const avatar = client?.user?.displayAvatarURL?.();
-  const embed = new EmbedBuilder()
-    .setColor(CATEGORY_COLORS[category] || CATEGORY_COLORS.default)
-    .setAuthor({ name: `Looki ${CATEGORY_ICONS[category] || CATEGORY_ICONS.default}`, iconURL: avatar })
-    .setFooter({ text: 'Looki • Helpful, cute, and clear', iconURL: avatar })
-    .setTimestamp();
+  const label = CATEGORY_ICONS[category] || CATEGORY_ICONS.default;
+  const author = avatar ? { name: `Looki | ${label}`, iconURL: avatar } : { name: `Looki | ${label}` };
+  const footer = avatar
+    ? { text: 'Looki | Helpful, cute, and clear', iconURL: avatar }
+    : { text: 'Looki | Helpful, cute, and clear' };
 
-  return embed;
+  return new EmbedBuilder()
+    .setColor(CATEGORY_COLORS[category] || CATEGORY_COLORS.default)
+    .setAuthor(author)
+    .setFooter(footer)
+    .setTimestamp();
 }
 
 module.exports = { createEmbed, CATEGORY_COLORS, CATEGORY_ICONS, CATEGORY_GIFS };

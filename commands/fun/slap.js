@@ -2,7 +2,7 @@ const { createReactionCommand } = require('../../utils/reactionCommand');
 
 module.exports = createReactionCommand({
   name: 'slap',
-  title: '💥 Playful slap',
+  title: 'Playful Slap',
   description: 'Give someone a playful slap',
   targeted: true,
   targetDescription: 'Person to slap',

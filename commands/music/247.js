@@ -28,7 +28,7 @@ module.exports = {
       .setDescription('Show the current 24/7 voice status')),
 
   async execute(interaction, client) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
     const subcommand = interaction.options.getSubcommand();
 
     try {
@@ -47,22 +47,37 @@ module.exports = {
         }
 
         const permissions = voiceChannel.permissionsFor(interaction.guild.members.me);
-        if (!permissions?.has(PermissionFlagsBits.Connect)) {
+        if (!permissions?.has(PermissionFlagsBits.Connect)
+          || !permissions?.has(PermissionFlagsBits.Speak)) {
           return interaction.editReply({
             embeds: [createMusicEmbed(client, {
               type: 'error',
               title: 'Cannot join that channel',
-              description: `I need the **Connect** permission in ${voiceChannel}.`,
+              description: `I need **Connect** and **Speak** permissions in ${voiceChannel}.`,
             })],
           });
         }
 
-        const player = await safeJoin(
-          client.kazagumo,
-          interaction.guildId,
-          voiceChannel.id,
-          interaction.guild.shardId,
-        );
+        let player = client.kazagumo.players.get(interaction.guildId);
+        if (player?.voiceId && player.voiceId !== voiceChannel.id
+          && (player.queue.current || player.queue.length || player.playing)) {
+          return interaction.editReply({
+            embeds: [createMusicEmbed(client, {
+              type: 'error',
+              title: 'Music is already active',
+              description: 'Stop the current session before moving 24/7 mode to another voice channel.',
+            })],
+          });
+        }
+
+        if (!player || player.voiceId !== voiceChannel.id) {
+          player = await safeJoin(
+            client.kazagumo,
+            interaction.guildId,
+            voiceChannel.id,
+            interaction.guild.shardId,
+          );
+        }
         player.textId = interaction.channelId;
         player.data.set('stay247', true);
 

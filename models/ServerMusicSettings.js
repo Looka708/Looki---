@@ -3,7 +3,7 @@ const { supabase } = require('../utils/supabase');
 class ServerMusicSettings {
   static async getSettings(guildId) {
     try {
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('server_music_settings')
         .select('*')
         .eq('guild_id', guildId)
@@ -12,13 +12,15 @@ class ServerMusicSettings {
       if (error && error.code !== 'PGRST116') throw error;
 
       if (!data || data.length === 0) {
-        // Create default settings
         const defaults = {
           guild_id: guildId,
           default_volume: 50,
+          dj_role_id: null,
+          music_channel_id: null,
+          music_text_channel_id: null,
+          stay_247: false,
           announce_songs: true,
           autoplay_enabled: false,
-          stay_247: false,
           bitrate_quality: 'high',
           loop_default_mode: 0,
         };
@@ -34,7 +36,7 @@ class ServerMusicSettings {
 
       return data[0];
     } catch (error) {
-      console.error('❌ [ServerMusicSettings] Error fetching settings:', error);
+      console.error('[ServerMusicSettings] Error fetching settings:', error);
       return null;
     }
   }
@@ -50,7 +52,7 @@ class ServerMusicSettings {
       if (error) throw error;
       return data?.[0];
     } catch (error) {
-      console.error(`❌ [ServerMusicSettings] Error updating ${setting}:`, error);
+      console.error(`[ServerMusicSettings] Error updating ${setting}:`, error);
       throw error;
     }
   }

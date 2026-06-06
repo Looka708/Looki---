@@ -1,5 +1,7 @@
+const UserFavorites = require('../models/UserFavorites');
+const ServerMusicSettings = require('../models/ServerMusicSettings');
 const { createEmbed } = require('../utils/embedBuilder');
-const { PermissionFlagsBits } = require('discord.js');
+const { createMusicEmbed } = require('../utils/musicEmbed');
 
 module.exports = {
   name: 'interactionCreate',
@@ -12,135 +14,171 @@ module.exports = {
         await command.execute(interaction, client);
       } catch (error) {
         console.error(`Error executing command ${interaction.commandName}:`, error);
+        if (error.code === 10062) return;
+
         const errorEmbed = createEmbed('error', client)
-          .setTitle('🥺 Command Error')
-          .setDescription('There was an error while executing this command! 🎀');
-          
+          .setTitle('Command error')
+          .setDescription('There was an error while executing this command.');
+
         try {
           if (interaction.replied || interaction.deferred) {
-            await interaction.editReply({ embeds: [errorEmbed], ephemeral: true });
+            await interaction.editReply({ embeds: [errorEmbed] });
           } else {
-            await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+            await interaction.reply({ embeds: [errorEmbed], flags: 64 });
           }
-        } catch (e) {
-          console.error('Failed to send error response (likely token expired):', e);
+        } catch (sendError) {
+          if (sendError.code === 10062) return;
+          console.error('Failed to send command error response:', sendError);
         }
       }
-    } else if (interaction.isButton()) {
-      if (interaction.customId.startsWith('music_')) {
-        await handleMusicButtons(interaction, client);
-      }
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('music_')) {
+      await handleMusicButtons(interaction, client);
     }
   },
 };
 
-async function handleMusicButtons(interaction, client) {
-  const player = client.kazagumo.players.get(interaction.guildId);
+function musicButtonReply(interaction, client, title, description, type) {
+  const payload = { embeds: [createMusicEmbed(client, { title, description, type })] };
+  if (interaction.deferred || interaction.replied) return interaction.editReply(payload);
+  return interaction.reply({ ...payload, flags: 64 });
+}
 
+async function handleMusicButtons(interaction, client) {
+  await interaction.deferReply({ flags: 64 });
+
+  const player = client.kazagumo.players.get(interaction.guildId);
   if (!player) {
-    return interaction.reply({ content: '🥺 No active music session found!', ephemeral: true });
+    return musicButtonReply(interaction, client, 'No active session', 'Start music with `/play` first.', 'error');
   }
 
-  const voiceChannel = interaction.member.voice.channel;
+  const voiceChannel = interaction.member?.voice?.channel;
   if (!voiceChannel || voiceChannel.id !== player.voiceId) {
-    return interaction.reply({ content: '🥺 You must be in the same voice channel as Looki!', ephemeral: true });
+    return musicButtonReply(
+      interaction,
+      client,
+      'Wrong voice channel',
+      'Join the same voice channel as Looki first.',
+      'error',
+    );
   }
 
   try {
     switch (interaction.customId) {
       case 'music_pause_resume':
-        if (player.paused) {
-          player.pause(false);
-          await interaction.reply({ content: '▶️ Resumed the melody! ✨', ephemeral: true });
-        } else {
-          player.pause(true);
-          await interaction.reply({ content: '⏸️ Paused the melody... ✨', ephemeral: true });
+        if (!player.queue.current) {
+          return musicButtonReply(interaction, client, 'Nothing is playing', 'Add a song with `/play`.', 'error');
         }
-        break;
+        player.pause(!player.paused);
+        return musicButtonReply(
+          interaction,
+          client,
+          player.paused ? 'Paused' : 'Resumed',
+          player.paused ? 'Playback is paused.' : 'Playback has resumed.',
+        );
 
       case 'music_skip':
-        player.skip(); // Stops current track, plays next if queued
-        await interaction.reply({ content: '⏭️ Skipping to the next masterpiece! 🎀', ephemeral: true });
-        break;
-
-      case 'music_previous':
-        // Kazagumo doesn't have built-in previous track, so we just inform the user for now
-        // or check if we stored it in player.data
-        const prevTrack = player.data.get('previousTrack');
-        if (prevTrack) {
-            player.queue.add(prevTrack, { index: 0 });
-            player.skip();
-            await interaction.reply({ content: '⏮️ Returning to the previous melody! 🎀', ephemeral: true });
-        } else {
-            await interaction.reply({ content: '🥺 No previous songs found in memory! ✨', ephemeral: true });
+        if (!player.queue.current) {
+          return musicButtonReply(interaction, client, 'Nothing is playing', 'Add a song with `/play`.', 'error');
         }
-        break;
+        player.skip();
+        return musicButtonReply(interaction, client, 'Skipped', 'Moving to the next track.');
+
+      case 'music_previous': {
+        const previous = player.data.get('previousTrack');
+        if (!previous) {
+          return musicButtonReply(
+            interaction,
+            client,
+            'No previous track',
+            'There is no previous track available in this session.',
+            'error',
+          );
+        }
+        player.queue.add(previous, { index: 0 });
+        player.skip();
+        return musicButtonReply(interaction, client, 'Previous track', `Returning to **${previous.title}**.`);
+      }
 
       case 'music_stop':
-        player.destroy();
-        await interaction.reply({ content: '⏹️ Music stopped and queue cleared! ✨', ephemeral: true });
-        break;
+        player.queue.clear();
+        if (player.data.get('stay247')) {
+          if (player.queue.current) player.skip();
+          return musicButtonReply(
+            interaction,
+            client,
+            'Queue cleared',
+            'Music stopped. I will stay connected because 24/7 mode is enabled.',
+          );
+        }
+        await player.destroy();
+        return musicButtonReply(interaction, client, 'Music stopped', 'The queue was cleared and I left voice.');
 
-      case 'music_vol_up':
-        const newVolUp = Math.min(player.volume + 10, 100);
-        player.setVolume(newVolUp);
-        await interaction.reply({ content: `🔊 Volume increased to **${newVolUp}%** ✨`, ephemeral: true });
-        break;
+      case 'music_vol_up': {
+        const volume = Math.min((player.volume || 100) + 10, 100);
+        player.setVolume(volume);
+        await ServerMusicSettings.setDefaultVolume(interaction.guildId, volume).catch(() => null);
+        return musicButtonReply(interaction, client, 'Volume updated', `Volume is now **${volume}%**.`);
+      }
 
-      case 'music_vol_down':
-        const newVolDown = Math.max(player.volume - 10, 0);
-        player.setVolume(newVolDown);
-        await interaction.reply({ content: `🔉 Volume decreased to **${newVolDown}%** ✨`, ephemeral: true });
-        break;
+      case 'music_vol_down': {
+        const volume = Math.max((player.volume || 100) - 10, 0);
+        player.setVolume(volume);
+        await ServerMusicSettings.setDefaultVolume(interaction.guildId, volume).catch(() => null);
+        return musicButtonReply(interaction, client, 'Volume updated', `Volume is now **${volume}%**.`);
+      }
 
       case 'music_shuffle':
+        if (!player.queue.length) {
+          return musicButtonReply(interaction, client, 'Queue is empty', 'There are no upcoming tracks to shuffle.', 'error');
+        }
         player.queue.shuffle();
-        await interaction.reply({ content: '🔀 Queue shuffled! ✨', ephemeral: true });
-        break;
+        return musicButtonReply(interaction, client, 'Queue shuffled', 'The upcoming tracks have been shuffled.');
 
-      case 'music_loop':
-          const loopModes = ['none', 'track', 'queue'];
-          const currentIndex = loopModes.indexOf(player.loop);
-          const nextMode = loopModes[(currentIndex + 1) % 3];
-          player.setLoop(nextMode);
-          await interaction.reply({ content: `🔁 Loop mode: **${nextMode.toUpperCase()}** ✨`, ephemeral: true });
-          break;
+      case 'music_loop': {
+        const modes = ['none', 'track', 'queue'];
+        const currentIndex = modes.indexOf(player.loop);
+        const nextMode = modes[(currentIndex + 1) % modes.length];
+        player.setLoop(nextMode);
+        return musicButtonReply(interaction, client, 'Loop updated', `Loop mode is now **${nextMode.toUpperCase()}**.`);
+      }
 
       case 'music_clear':
-          if (player.queue.length === 0) {
-              await interaction.reply({ content: '🧸 Queue is already empty! ✨', ephemeral: true });
-          } else {
-              player.queue.clear();
-              await interaction.reply({ content: '🧹 Cleared the upcoming songs! ✨', ephemeral: true });
-          }
-          break;
+        if (!player.queue.length) {
+          return musicButtonReply(interaction, client, 'Queue is empty', 'The upcoming queue is already empty.', 'error');
+        }
+        player.queue.clear();
+        return musicButtonReply(interaction, client, 'Queue cleared', 'All upcoming tracks were removed.');
 
-      case 'music_like':
-          const track = player.queue.current;
-          if (!track) return interaction.reply({ content: '🥺 Nothing playing right now!', ephemeral: true });
-          
-          try {
-              const UserFavorites = require('../models/UserFavorites');
-              await UserFavorites.addFavorite(interaction.user.id, {
-                  name: track.title,
-                  url: track.uri,
-                  thumbnail: track.thumbnail,
-                  uploader: { name: track.author }
-              });
-              await interaction.reply({ content: `🤍 Added **${track.title}** to your favorites! 🎀`, ephemeral: true });
-          } catch (e) {
-             console.error('Like button error:', e);
-             await interaction.reply({ content: '🥺 Could not save to favorites... ✨', ephemeral: true });
-          }
-          break;
+      case 'music_like': {
+        const track = player.queue.current;
+        if (!track) {
+          return musicButtonReply(interaction, client, 'Nothing is playing', 'There is no track to save.', 'error');
+        }
+        await UserFavorites.addFavorite(interaction.user.id, {
+          name: track.title,
+          url: track.uri,
+          artist: track.author || 'Unknown',
+          source: track.sourceName,
+        });
+        return musicButtonReply(interaction, client, 'Favorite saved', `Added **${track.title}** to your favorites.`);
+      }
 
       default:
-        await interaction.reply({ content: '🥺 This button is currently under maintenance! 🎀', ephemeral: true });
+        return musicButtonReply(interaction, client, 'Unavailable control', 'This button is no longer available.', 'error');
     }
   } catch (error) {
     console.error('Music button error:', error);
     if (!interaction.replied) {
-      await interaction.reply({ content: '❌ Error processing interaction.', ephemeral: true }).catch(() => {});
+      return musicButtonReply(
+        interaction,
+        client,
+        'Control failed',
+        'I could not process that music control. Please try again.',
+        'error',
+      ).catch(() => null);
     }
   }
 }

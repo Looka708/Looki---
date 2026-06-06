@@ -2,7 +2,7 @@ const { createReactionCommand } = require('../../utils/reactionCommand');
 
 module.exports = createReactionCommand({
   name: 'kiss',
-  title: '💋 Sweet kiss',
+  title: 'Sweet Kiss',
   description: 'Give someone a sweet kiss',
   targeted: true,
   targetDescription: 'Person to kiss',

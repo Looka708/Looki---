@@ -2,7 +2,7 @@ const { createReactionCommand } = require('../../utils/reactionCommand');
 
 module.exports = createReactionCommand({
   name: 'pat',
-  title: '🌸 Headpat',
+  title: 'Headpat',
   description: 'Give someone a gentle headpat',
   targeted: true,
   targetDescription: 'Person to pat',

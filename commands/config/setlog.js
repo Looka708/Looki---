@@ -7,30 +7,31 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('setlog')
     .setDescription('Set the moderation log channel')
-    .addChannelOption(option =>
-      option.setName('channel')
-        .setDescription('The channel for mod logs')
-        .setRequired(true)
-    )
+    .addChannelOption(option => option
+      .setName('channel')
+      .setDescription('The channel for mod logs')
+      .setRequired(true))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-  execute: async (interaction, client) => {
-    const channel = interaction.options.getChannel('channel');
+
+  async execute(interaction, client) {
+    const channel = interaction.options.getChannel('channel', true);
+    await interaction.deferReply({ flags: 64 });
 
     try {
       await updateConfig(interaction.guild.id, { modlog_channel: channel.id });
 
-      const embed = createEmbed('success', client)
-        .setTitle('💖 Modlog Channel Set')
-        .setDescription(`Moderation logs will now post to ${channel}`);
-
-      await interaction.reply({ embeds: [embed] });
+      return interaction.editReply({
+        embeds: [createEmbed('success', client)
+          .setTitle('Modlog Channel Set')
+          .setDescription(`Moderation logs will now post to ${channel}.`)],
+      });
     } catch (error) {
-      console.error(error);
-      const errorEmbed = createEmbed('error', client)
-        .setTitle('🥺 Error')
-        .setDescription('hmm that didn\'t work :( try again?');
-
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      console.error('Setlog command error:', error);
+      return interaction.editReply({
+        embeds: [createEmbed('error', client)
+          .setTitle('Setlog Failed')
+          .setDescription('I could not update the moderation log channel.')],
+      });
     }
   },
 };

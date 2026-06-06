@@ -1,34 +1,43 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { createEmbed } = require('../../utils/embedBuilder');
+const ServerMusicSettings = require('../../models/ServerMusicSettings');
+const { createMusicEmbed } = require('../../utils/musicEmbed');
+const { requirePlayer, requireSameVoice } = require('../../utils/musicCommandUtils');
 
 module.exports = {
   name: 'stop',
   data: new SlashCommandBuilder()
     .setName('stop')
-    .setDescription('Stop the music and clear the queue 🧸'),
-  execute: async (interaction, client) => {
-    const player = client.kazagumo.players.get(interaction.guildId);
+    .setDescription('Stop music and clear the queue'),
 
-    if (!player) {
-      const errorEmbed = createEmbed('error', client)
-        .setTitle('🥺 Nothing Playing')
-        .setDescription('No music is currently playing! 🎀');
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+  async execute(interaction, client) {
+    const { player, error } = requirePlayer(interaction, client, { requireTrack: false });
+    if (error) return interaction.reply({ embeds: [error], flags: 64 });
+
+    const voiceCheck = requireSameVoice(interaction, client, player);
+    if (voiceCheck.error) return interaction.reply({ embeds: [voiceCheck.error], flags: 64 });
+
+    const settings = await ServerMusicSettings.getSettings(interaction.guildId);
+    const stay247 = Boolean(settings?.stay_247 || player.data.get('stay247'));
+
+    if (stay247) {
+      player.queue.clear();
+      if (player.queue.current) player.skip();
+      player.data.set('stay247', true);
+      return interaction.reply({
+        embeds: [createMusicEmbed(client, {
+          title: 'Queue cleared',
+          description: 'Music stopped, but 24/7 mode is enabled so I will stay in voice.',
+          footer: 'Use /247 disable to disconnect completely',
+        })],
+      });
     }
 
-    try {
-      await interaction.deferReply();
-      player.destroy();
-
-      const stopEmbed = createEmbed('music', client)
-        .setTitle('🧸 Music Stopped')
-        .setDescription('The melody has faded... See you soon! ✨');
-      
-      await interaction.editReply({ embeds: [stopEmbed] });
-      
-    } catch (error) {
-       console.error('Stop error:', error);
-       await interaction.editReply({ content: '🥺 Failed to stop the music.' });
-    }
+    await player.destroy();
+    return interaction.reply({
+      embeds: [createMusicEmbed(client, {
+        title: 'Music stopped',
+        description: 'I cleared the queue and left the voice channel.',
+      })],
+    });
   },
 };

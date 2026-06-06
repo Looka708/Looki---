@@ -5,25 +5,20 @@ module.exports = {
   name: 'avatar',
   data: new SlashCommandBuilder()
     .setName('avatar')
-    .setDescription('🌸 grab someone\'s profile picture')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('the user to get the avatar of')
-        .setRequired(false)
-    ),
-  execute: async (interaction, client) => {
+    .setDescription('Get someone\'s profile picture')
+    .addUserOption(option => option
+      .setName('user')
+      .setDescription('User to get the avatar of')),
+
+  async execute(interaction, client) {
     const user = interaction.options.getUser('user') || interaction.user;
-    
-    // Get full user object to ensure high-res avatar
-    const fullUser = await client.users.fetch(user.id, { force: true });
-    
-    const avatarUrl = fullUser.displayAvatarURL({ size: 1024, dynamic: true });
+    const avatarUrl = user.displayAvatarURL({ size: 1024 });
 
     const embed = createEmbed('default', client)
-      .setTitle(`🌸 ${fullUser.username}'s avatar`)
+      .setTitle(`${user.username}'s Avatar`)
       .setImage(avatarUrl)
-      .setDescription(`[download high-res](${avatarUrl}) ✨`);
+      .setDescription(`[Download high-res](${avatarUrl})`);
 
-    await interaction.reply({ embeds: [embed] });
+    return interaction.reply({ embeds: [embed] });
   },
 };

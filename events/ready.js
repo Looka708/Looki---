@@ -6,16 +6,15 @@ module.exports = {
   name: 'ready',
   once: true,
   async execute(client) {
-    console.log('✦ Looki is online! 🌸');
-    
-    // Restore temporary bans that should have expired
+    console.log('Looki is online.');
+
     await restoreExpiredBans(client);
     await restore247Connections(client);
 
     const statuses = [
-      { name: '🌸 watching over the server', type: 'WATCHING' },
-      { name: '💕 protecting looki\'s world', type: 'PLAYING' },
-      { name: '✦ keeping it cute & safe', type: 'WATCHING' },
+      { name: 'watching over the server', type: 'WATCHING' },
+      { name: 'protecting Looki servers', type: 'PLAYING' },
+      { name: 'keeping music ready', type: 'WATCHING' },
     ];
 
     let currentStatus = 0;
@@ -25,10 +24,9 @@ module.exports = {
       currentStatus = (currentStatus + 1) % statuses.length;
     }, 30000);
 
-    // Check for expired bans every 5 minutes
     setInterval(async () => {
       await restoreExpiredBans(client);
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 5 * 60 * 1000);
   },
 };
 
@@ -38,6 +36,7 @@ async function restore247Connections(client) {
 
     for (const settings of settingsList) {
       try {
+        if (!settings.music_channel_id) continue;
         const guild = client.guilds.cache.get(settings.guild_id)
           || await client.guilds.fetch(settings.guild_id);
         const voiceChannel = await guild.channels.fetch(settings.music_channel_id);
@@ -47,15 +46,11 @@ async function restore247Connections(client) {
           continue;
         }
 
-        const player = await safeJoin(
-          client.kazagumo,
-          guild.id,
-          voiceChannel.id,
-          guild.shardId,
-        );
+        const player = await safeJoin(client.kazagumo, guild.id, voiceChannel.id, guild.shardId);
         player.textId = settings.music_text_channel_id || null;
         player.data.set('stay247', true);
-        console.log(`[24/7] Reconnected to ${voiceChannel.name} in ${guild.name}`);
+        if (settings.default_volume !== undefined) player.setVolume(settings.default_volume);
+        console.log(`[24/7] Restored ${guild.name} -> ${voiceChannel.name}`);
       } catch (error) {
         console.error(`[24/7] Failed to restore guild ${settings.guild_id}:`, error.message);
       }
@@ -68,23 +63,18 @@ async function restore247Connections(client) {
 async function restoreExpiredBans(client) {
   try {
     const expiredBans = await TemporaryBan.getAllExpiredBans();
-    
+
     for (const ban of expiredBans) {
       try {
         const guild = await client.guilds.fetch(ban.guild_id);
-        
-        // Unban the user
         await guild.members.unban(ban.user_id, 'Temporary ban expired');
-        
-        // Mark as processed
         await TemporaryBan.markAsExpired(ban.id);
-        
-        console.log(`✨ [Temp Ban] Unbanned user ${ban.user_id} in guild ${ban.guild_id}`);
+        console.log(`[TempBan] Unbanned user ${ban.user_id} in guild ${ban.guild_id}`);
       } catch (error) {
-        console.error(`❌ [Temp Ban] Error unbanning user ${ban.user_id}:`, error.message);
+        console.error(`[TempBan] Error unbanning user ${ban.user_id}:`, error.message);
       }
     }
   } catch (error) {
-    console.error('❌ [Temp Ban Restore] Error:', error);
+    console.error('[TempBan] Restore error:', error);
   }
 }

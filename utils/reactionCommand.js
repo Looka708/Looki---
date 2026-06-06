@@ -21,14 +21,16 @@ function createReactionCommand(options) {
       const target = options.targeted ? interaction.options.getUser('user', true) : null;
 
       if (target?.id === interaction.user.id && options.selfMessage) {
-        return interaction.reply({ content: options.selfMessage, ephemeral: true });
+        return interaction.reply({ content: options.selfMessage, flags: 64 });
       }
 
       if (target?.id === client.user.id && options.botMessage) {
-        return interaction.reply({ content: options.botMessage, ephemeral: true });
+        return interaction.reply({ content: options.botMessage, flags: 64 });
       }
 
-      const image = reactionGifs.getRandomGif(options.name);
+      await interaction.deferReply();
+
+      const image = await reactionGifs.getReactionGif(options.name);
       const description = options.message(interaction.user, target);
       const embed = createEmbed('fun', client)
         .setTitle(options.title)
@@ -36,7 +38,7 @@ function createReactionCommand(options) {
 
       if (image) embed.setImage(image);
 
-      return interaction.reply({
+      return interaction.editReply({
         content: target ? `<@${target.id}>` : undefined,
         embeds: [embed],
         allowedMentions: target ? { users: [target.id] } : undefined,

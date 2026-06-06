@@ -16,7 +16,7 @@ module.exports = {
           title: 'Nothing is playing',
           description: 'Start a listening session with `/play`.',
         })],
-        ephemeral: true,
+        flags: 64,
       });
     }
 

@@ -1,41 +1,37 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { createEmbed } = require('../../utils/embedBuilder');
+const { createMusicEmbed } = require('../../utils/musicEmbed');
+const { requirePlayer, requireSameVoice } = require('../../utils/musicCommandUtils');
 
 module.exports = {
   name: 'pause',
   data: new SlashCommandBuilder()
     .setName('pause')
-    .setDescription('Pause the current song 🧸'),
-  execute: async (interaction, client) => {
-    const player = client.kazagumo.players.get(interaction.guildId);
+    .setDescription('Pause the current song'),
 
-    if (!player || !player.queue.current) {
-      const errorEmbed = createEmbed('error', client)
-        .setTitle('🥺 Nothing Playing')
-        .setDescription('There is no song playing to pause! 🎀');
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-    }
+  async execute(interaction, client) {
+    const { player, error } = requirePlayer(interaction, client);
+    if (error) return interaction.reply({ embeds: [error], flags: 64 });
+
+    const voiceCheck = requireSameVoice(interaction, client, player);
+    if (voiceCheck.error) return interaction.reply({ embeds: [voiceCheck.error], flags: 64 });
 
     if (player.paused) {
-      const errorEmbed = createEmbed('error', client)
-        .setTitle('🧸 Already Paused')
-        .setDescription('The player is already paused! 🎀');
-      return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      return interaction.reply({
+        embeds: [createMusicEmbed(client, {
+          type: 'error',
+          title: 'Already paused',
+          description: 'Use `/resume` when you are ready to continue.',
+        })],
+        flags: 64,
+      });
     }
 
-    try {
-      await interaction.deferReply();
-      player.pause(true);
-
-      const pauseEmbed = createEmbed('music', client)
-        .setTitle('🧸 Song Paused')
-        .setDescription(`Paused **[${player.queue.current.title}](${player.queue.current.uri})**! Use /resume to continue! ✨`);
-      
-      await interaction.editReply({ embeds: [pauseEmbed] });
-      
-    } catch (error) {
-       console.error('Pause error:', error);
-       await interaction.editReply({ content: '🥺 Failed to pause the player.' });
-    }
+    player.pause(true);
+    return interaction.reply({
+      embeds: [createMusicEmbed(client, {
+        title: 'Paused',
+        description: `Paused **[${player.queue.current.title}](${player.queue.current.uri})**.`,
+      })],
+    });
   },
 };

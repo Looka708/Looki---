@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 const { getOrCreateXP, getLeaderboard } = require('../../models/XP');
 
@@ -7,62 +7,62 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('rank')
     .setDescription('Check your or another member\'s rank and XP progress')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('The user to check (defaults to you)')
-        .setRequired(false)
-    ),
-  execute: async (interaction, client) => {
-    try {
-      await interaction.deferReply();
+    .addUserOption(option => option
+      .setName('user')
+      .setDescription('User to check, defaults to you')),
 
+  async execute(interaction, client) {
+    await interaction.deferReply();
+
+    try {
       const user = interaction.options.getUser('user') || interaction.user;
       const member = await interaction.guild.members.fetch(user.id).catch(() => null);
 
       if (!member) {
-        await interaction.editReply({ content: 'User not found in this server.' });
-        return;
+        return interaction.editReply({
+          embeds: [createEmbed('error', client)
+            .setTitle('Member not found')
+            .setDescription('That user is not in this server.')],
+        });
       }
 
       const xpData = await getOrCreateXP(interaction.guildId, user.id);
       const leaderboard = await getLeaderboard(interaction.guildId, 100);
+      const rankIndex = leaderboard.findIndex(entry => entry.user_id === user.id);
+      const rank = rankIndex >= 0 ? `#${rankIndex + 1}` : 'Unranked';
 
-      // Calculate rank position
-      const rank = leaderboard.findIndex(entry => entry.user_id === user.id) + 1 || 'N/A';
-
-      // Calculate XP for current and next level
-      const currentLevelXp = xpData.level * 100;
-      const nextLevelXp = (xpData.level + 1) * 100;
-      const currentLevelProgress = xpData.xp - currentLevelXp;
-      const xpNeeded = nextLevelXp - currentLevelXp;
-      const xpProgress = (currentLevelProgress / xpNeeded) * 100;
-
-      // Build progress bar (20 segments)
-      const filledSegments = Math.floor(xpProgress / 5);
-      const emptySegments = 20 - filledSegments;
-      const progressBar = '█'.repeat(filledSegments) + '░'.repeat(emptySegments);
+      const level = xpData?.level || 0;
+      const xp = xpData?.xp || 0;
+      const currentLevelXp = level * 100;
+      const progress = Math.max(0, xp - currentLevelXp);
+      const progressPercent = Math.min(Math.floor(progress), 100);
+      const filled = Math.min(Math.floor(progressPercent / 10), 10);
+      const progressBar = `${'#'.repeat(filled)}${'-'.repeat(10 - filled)}`;
 
       const embed = createEmbed('levels', client)
-        .setTitle(`🎀 ${user.username}'s Rank Card`)
-        .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
+        .setTitle(`${user.username}'s Rank`)
+        .setThumbnail(user.displayAvatarURL({ size: 256 }))
         .addFields(
-          { name: '🏆 Server Rank', value: `#${rank}`, inline: true },
-          { name: '✨ Level', value: `${xpData.level}`, inline: true },
-          { name: '💎 Total XP', value: `${xpData.xp.toLocaleString()} XP`, inline: true },
-          { 
-            name: '🎀 XP Progress', 
-            value: `\`${progressBar}\` ${Math.floor(xpProgress)}%\n${currentLevelProgress.toLocaleString()}/${xpNeeded.toLocaleString()} XP`,
-            inline: false 
+          { name: 'Server rank', value: rank, inline: true },
+          { name: 'Level', value: `${level}`, inline: true },
+          { name: 'Total XP', value: `${xp.toLocaleString()} XP`, inline: true },
+          {
+            name: 'Level progress',
+            value: `\`${progressBar}\` ${progressPercent}%\n${progress}/100 XP`,
           },
-          { name: '🦋 Account Age', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true },
-          { name: '📅 Join Date', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: true }
+          { name: 'Account created', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true },
+          { name: 'Joined server', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: true },
         )
-        .setFooter({ text: `Rank Card • Top ${rank} of ${leaderboard.length} members` });
+        .setFooter({ text: `Top 100 ranking | ${leaderboard.length} tracked members` });
 
-      await interaction.editReply({ embeds: [embed] });
+      return interaction.editReply({ embeds: [embed] });
     } catch (error) {
       console.error('Rank command error:', error);
-      await interaction.editReply({ content: 'Error fetching rank information.' });
+      return interaction.editReply({
+        embeds: [createEmbed('error', client)
+          .setTitle('Rank unavailable')
+          .setDescription('I could not fetch rank information right now.')],
+      });
     }
   },
 };

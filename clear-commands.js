@@ -1,39 +1,48 @@
 require('dotenv').config();
+
 const { REST, Routes } = require('discord.js');
 
-const TOKEN = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
-const CLIENT_ID = process.env.BOT_ID || process.env.DISCORD_CLIENT_ID;
-const GUILD_ID = process.env.GUILD_ID;
+const token = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
+const clientId = process.env.CLIENT_ID || process.env.BOT_ID || process.env.DISCORD_CLIENT_ID;
 
-if (!TOKEN || !CLIENT_ID) {
-  console.error('❌ Missing DISCORD_TOKEN or BOT_ID in .env file');
+if (!token || !clientId) {
+  console.error('Missing DISCORD_TOKEN or CLIENT_ID in .env.');
   process.exit(1);
 }
 
-const rest = new REST({ version: '10' }).setToken(TOKEN);
+const rest = new REST({ version: '10' }).setToken(token);
 
-async function clearCommands() {
-  try {
-    console.log('🌸 Starting to clear commands...\n');
+async function getGuildIds() {
+  const guildIds = [];
+  let after;
 
-    // 1. Clear Global Commands
-    console.log('🌍 Clearing global commands...');
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
-    console.log('✅ Successfully cleared global commands.');
+  while (true) {
+    const query = new URLSearchParams({ limit: '200' });
+    if (after) query.set('after', after);
 
-    // 2. Clear Guild Commands if GUILD_ID is provided
-    if (GUILD_ID) {
-      console.log(`🎯 Clearing guild commands for: ${GUILD_ID}`);
-      await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: [] });
-      console.log('✅ Successfully cleared guild commands.');
-    } else {
-      console.log('ℹ️ No GUILD_ID found in .env, skipping guild-specific clearance.');
-    }
+    const guilds = await rest.get(Routes.userGuilds(), { query });
+    guildIds.push(...guilds.map((guild) => guild.id));
 
-    console.log('\n✨ All commands cleared! You can now run `npm run deploy` to re-register them correctly.');
-  } catch (error) {
-    console.error('❌ Error clearing commands:', error);
+    if (guilds.length < 200) break;
+    after = guilds[guilds.length - 1].id;
   }
+
+  return guildIds;
 }
 
-clearCommands();
+async function clearCommands() {
+  const guildIds = await getGuildIds();
+
+  await rest.put(Routes.applicationCommands(clientId), { body: [] });
+
+  for (const guildId of guildIds) {
+    await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
+  }
+
+  console.log(`Cleared global commands and commands in ${guildIds.length} guild(s).`);
+}
+
+clearCommands().catch((error) => {
+  console.error('Failed to clear commands:', error);
+  process.exitCode = 1;
+});
