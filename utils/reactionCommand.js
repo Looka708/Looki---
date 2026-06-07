@@ -36,7 +36,14 @@ function createReactionCommand(options) {
         .setTitle(options.title)
         .setDescription(description);
 
-      if (image) embed.setImage(image);
+      if (image) {
+        embed.setImage(image);
+      } else {
+        embed.addFields({
+          name: 'GIF unavailable',
+          value: 'The reaction worked, but the GIF provider did not return an image this time.',
+        });
+      }
 
       return interaction.editReply({
         content: target ? `<@${target.id}>` : undefined,

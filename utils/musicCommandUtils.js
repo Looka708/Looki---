@@ -1,4 +1,5 @@
 const { PermissionFlagsBits } = require('discord.js');
+const ServerMusicSettings = require('../models/ServerMusicSettings');
 const { createMusicEmbed } = require('./musicEmbed');
 
 function requirePlayer(interaction, client, { requireTrack = true } = {}) {
@@ -46,6 +47,55 @@ function canManageMusic(interaction, track) {
     || track?.requester?.id === interaction.user.id;
 }
 
+async function canControlMusic(interaction, player, track = player?.queue?.current) {
+  if (interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels)
+    || interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return true;
+  }
+
+  const settings = await ServerMusicSettings.getSettings(interaction.guildId);
+  if (settings?.dj_role_id && interaction.member?.roles?.cache?.has(settings.dj_role_id)) {
+    return true;
+  }
+
+  return Boolean(track?.requester?.id && track.requester.id === interaction.user.id);
+}
+
+function getRequiredSkipVotes(interaction, player) {
+  const voiceChannel = interaction.guild?.channels?.cache?.get(player.voiceId)
+    || interaction.member?.voice?.channel;
+  const listeners = voiceChannel?.members?.filter(member => !member.user.bot).size || 1;
+  return Math.max(1, Math.ceil(listeners / 2));
+}
+
+async function requestSkipVote(interaction, client, player) {
+  const votes = player.data.get('skipVotes') || new Set();
+  votes.add(interaction.user.id);
+  player.data.set('skipVotes', votes);
+
+  const required = getRequiredSkipVotes(interaction, player);
+  if (votes.size >= required) {
+    const skipped = player.queue.current;
+    player.data.set('skipVotes', new Set());
+    player.skip();
+    return {
+      skipped: true,
+      embed: createMusicEmbed(client, {
+        title: 'Vote skip passed',
+        description: `Skipped **[${skipped.title}](${skipped.uri})** with **${votes.size}/${required}** vote(s).`,
+      }),
+    };
+  }
+
+  return {
+    skipped: false,
+    embed: createMusicEmbed(client, {
+      title: 'Skip vote added',
+      description: `You voted to skip. **${votes.size}/${required}** vote(s) needed.`,
+    }),
+  };
+}
+
 function parseSeekTime(input) {
   const value = String(input || '').trim().toLowerCase();
   if (!value) return null;
@@ -71,7 +121,10 @@ function parseSeekTime(input) {
 
 module.exports = {
   canManageMusic,
+  canControlMusic,
+  getRequiredSkipVotes,
   parseSeekTime,
+  requestSkipVote,
   requirePlayer,
   requireSameVoice,
 };

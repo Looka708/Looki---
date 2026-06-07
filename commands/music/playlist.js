@@ -1,7 +1,35 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { PermissionFlagsBits, SlashCommandBuilder } = require('discord.js');
 const ServerPlaylist = require('../../models/ServerPlaylist');
+const ServerMusicSettings = require('../../models/ServerMusicSettings');
+const {
+  createMusicServiceOfflineEmbed,
+  hasOnlineMusicNode,
+  safeJoin,
+  waitForOnlineMusicNode,
+} = require('../../utils/audioPlayer');
 const { createMusicEmbed, formatDuration } = require('../../utils/musicEmbed');
 const { requirePlayer, requireSameVoice } = require('../../utils/musicCommandUtils');
+
+async function loadSavedTracks(client, songs, requester) {
+  const tracks = new Array(songs.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < songs.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const song = songs[index];
+      const result = await client.kazagumo
+        .search(song.uri || song.title, { requester })
+        .catch(() => null);
+      tracks[index] = result?.tracks?.[0] || null;
+    }
+  }
+
+  const workerCount = Math.min(5, songs.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return tracks.filter(Boolean);
+}
 
 module.exports = {
   name: 'playlist',
@@ -19,6 +47,13 @@ module.exports = {
     .addSubcommand(sub => sub
       .setName('add')
       .setDescription('Add the current song to a playlist')
+      .addStringOption(option => option
+        .setName('playlist')
+        .setDescription('Playlist name')
+        .setRequired(true)))
+    .addSubcommand(sub => sub
+      .setName('play')
+      .setDescription('Add a saved playlist to the music queue')
       .addStringOption(option => option
         .setName('playlist')
         .setDescription('Playlist name')
@@ -95,6 +130,43 @@ module.exports = {
 
         const playlistName = interaction.options.getString('playlist', true).trim();
         const track = player.queue.current;
+        const playlist = await ServerPlaylist.getByName(
+          interaction.guildId,
+          interaction.user.id,
+          playlistName,
+        );
+
+        if (!playlist) {
+          return interaction.editReply({
+            embeds: [createMusicEmbed(client, {
+              type: 'error',
+              title: 'Playlist not found',
+              description: `Create **${playlistName}** first with \`/playlist create\`.`,
+            })],
+          });
+        }
+
+        const savedSongs = Array.isArray(playlist.songs) ? playlist.songs : [];
+        if (savedSongs.some(song => song.uri === track.uri)) {
+          return interaction.editReply({
+            embeds: [createMusicEmbed(client, {
+              type: 'error',
+              title: 'Song already saved',
+              description: `**${track.title}** is already in **${playlist.name}**.`,
+            })],
+          });
+        }
+
+        if (savedSongs.length >= 100) {
+          return interaction.editReply({
+            embeds: [createMusicEmbed(client, {
+              type: 'error',
+              title: 'Playlist is full',
+              description: 'A saved playlist can contain up to **100 songs**.',
+            })],
+          });
+        }
+
         const updated = await ServerPlaylist.addSong(interaction.guildId, interaction.user.id, playlistName, {
           title: track.title,
           uri: track.uri,
@@ -124,6 +196,119 @@ module.exports = {
             { name: 'Duration', value: formatDuration(track.length), inline: true },
             { name: 'Songs', value: `${updated.songs?.length || 0}`, inline: true },
           )],
+        });
+      }
+
+      if (subcommand === 'play') {
+        const playlistName = interaction.options.getString('playlist', true).trim();
+        const playlist = await ServerPlaylist.getByName(
+          interaction.guildId,
+          interaction.user.id,
+          playlistName,
+        );
+        if (!playlist) {
+          return interaction.editReply({
+            embeds: [createMusicEmbed(client, {
+              type: 'error',
+              title: 'Playlist not found',
+              description: `You do not have a playlist named **${playlistName}** in this server.`,
+            })],
+          });
+        }
+
+        const songs = Array.isArray(playlist.songs) ? playlist.songs.slice(0, 50) : [];
+        if (!songs.length) {
+          return interaction.editReply({
+            embeds: [createMusicEmbed(client, {
+              type: 'error',
+              title: 'Playlist is empty',
+              description: `Add songs to **${playlist.name}** before playing it.`,
+            })],
+          });
+        }
+
+        if (!hasOnlineMusicNode(client) && !await waitForOnlineMusicNode(client)) {
+          return interaction.editReply({
+            embeds: [createMusicServiceOfflineEmbed(client)],
+          });
+        }
+
+        const voiceChannel = interaction.member?.voice?.channel;
+        if (!voiceChannel) {
+          return interaction.editReply({
+            embeds: [createMusicEmbed(client, {
+              type: 'error',
+              title: 'Join a voice channel',
+              description: 'Connect to a voice channel before playing a saved playlist.',
+            })],
+          });
+        }
+
+        const permissions = voiceChannel.permissionsFor(interaction.guild.members.me);
+        if (!permissions?.has(PermissionFlagsBits.Connect)
+          || !permissions?.has(PermissionFlagsBits.Speak)) {
+          return interaction.editReply({
+            embeds: [createMusicEmbed(client, {
+              type: 'error',
+              title: 'Missing voice permissions',
+              description: `I need **Connect** and **Speak** permissions in ${voiceChannel}.`,
+            })],
+          });
+        }
+
+        let player = client.kazagumo.players.get(interaction.guildId);
+        if (player?.voiceId && player.voiceId !== voiceChannel.id) {
+          return interaction.editReply({
+            embeds: [createMusicEmbed(client, {
+              type: 'error',
+              title: 'Wrong voice channel',
+              description: 'Join the same voice channel as Looki before loading a playlist.',
+            })],
+          });
+        }
+
+        const tracks = await loadSavedTracks(client, songs, interaction.user);
+
+        if (!tracks.length) {
+          return interaction.editReply({
+            embeds: [createMusicEmbed(client, {
+              type: 'error',
+              title: 'Playlist unavailable',
+              description: 'None of the saved songs could be loaded from the audio service.',
+            })],
+          });
+        }
+
+        const createdPlayer = !player;
+        if (!player) {
+          player = await safeJoin(
+            client.kazagumo,
+            interaction.guildId,
+            voiceChannel.id,
+            interaction.guild.shardId,
+          );
+        }
+
+        const settings = await ServerMusicSettings.getSettings(interaction.guildId);
+        player.textId = settings?.music_text_channel_id || interaction.channelId;
+        player.data.set('stay247', Boolean(settings?.stay_247));
+        if (createdPlayer) {
+          if (settings?.default_volume !== undefined) player.setVolume(settings.default_volume);
+          player.setLoop(['none', 'track', 'queue'][settings?.loop_default_mode] || 'none');
+        }
+
+        for (const track of tracks) player.queue.add(track);
+        if (!player.playing && !player.paused) player.play();
+
+        return interaction.editReply({
+          embeds: [createMusicEmbed(client, {
+            title: 'Saved playlist queued',
+            description: `Added **${tracks.length}** song(s) from **${playlist.name}**.`,
+            thumbnail: tracks[0]?.thumbnail,
+            footer: tracks.length < songs.length
+              ? `${songs.length - tracks.length} unavailable song(s) were skipped`
+              : `Playing in ${voiceChannel.name}`,
+          })],
         });
       }
 

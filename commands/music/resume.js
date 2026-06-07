@@ -9,25 +9,26 @@ module.exports = {
     .setDescription('Resume the paused song'),
 
   async execute(interaction, client) {
+    await interaction.deferReply();
+
     const { player, error } = requirePlayer(interaction, client);
-    if (error) return interaction.reply({ embeds: [error], flags: 64 });
+    if (error) return interaction.editReply({ embeds: [error] });
 
     const voiceCheck = requireSameVoice(interaction, client, player);
-    if (voiceCheck.error) return interaction.reply({ embeds: [voiceCheck.error], flags: 64 });
+    if (voiceCheck.error) return interaction.editReply({ embeds: [voiceCheck.error] });
 
     if (!player.paused) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [createMusicEmbed(client, {
           type: 'error',
           title: 'Already playing',
           description: 'The player is not paused right now.',
         })],
-        flags: 64,
       });
     }
 
     player.pause(false);
-    return interaction.reply({
+    return interaction.editReply({
       embeds: [createMusicEmbed(client, {
         title: 'Resumed',
         description: `Resumed **[${player.queue.current.title}](${player.queue.current.uri})**.`,

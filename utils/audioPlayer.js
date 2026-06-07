@@ -1,5 +1,11 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  PermissionFlagsBits,
+} = require('discord.js');
 const UserFavorites = require('../models/UserFavorites');
+const ServerMusicSettings = require('../models/ServerMusicSettings');
 const { createEmbed } = require('./embedBuilder');
 const MusicLogger = require('./musicLogger');
 
@@ -34,8 +40,121 @@ function buildMusicControls() {
   return [row1, row2];
 }
 
+function getGuildMe(channel, client) {
+  return channel?.guild?.members?.me || channel?.guild?.members?.cache?.get(client.user.id) || null;
+}
+
+function canSendMusicMessage(channel, client) {
+  if (!channel?.isTextBased?.()) {
+    return { ok: false, reason: 'channel is not text-based' };
+  }
+
+  const me = getGuildMe(channel, client);
+  const permissions = me ? channel.permissionsFor(me) : null;
+  if (!permissions) {
+    return { ok: false, reason: 'missing permission cache' };
+  }
+
+  const required = [
+    ['View Channel', PermissionFlagsBits.ViewChannel],
+    ['Send Messages', PermissionFlagsBits.SendMessages],
+    ['Embed Links', PermissionFlagsBits.EmbedLinks],
+  ];
+  const missing = required
+    .filter(([, permission]) => !permissions.has(permission))
+    .map(([name]) => name);
+
+  return missing.length
+    ? { ok: false, reason: `missing ${missing.join(', ')}` }
+    : { ok: true };
+}
+
+async function sendMusicMessage(client, channel, payload, context, guildId) {
+  const permissionCheck = canSendMusicMessage(channel, client);
+  if (!permissionCheck.ok) {
+    console.warn(`[Music] Skipping ${context} in guild ${guildId}: ${permissionCheck.reason}`);
+    return null;
+  }
+
+  return channel.send(payload).catch(error => {
+    if (error?.code === 50013) {
+      console.warn(`[Music] Missing permission for ${context} in guild ${guildId}.`);
+      return null;
+    }
+
+    MusicLogger.logError(context, error, { guildId });
+    return null;
+  });
+}
+
+function getOnlineMusicNodes(client) {
+  const nodes = client.kazagumo?.shoukaku?.nodes;
+  if (!nodes) return [];
+  return [...nodes.values()].filter(node => node.state === 1);
+}
+
+function hasOnlineMusicNode(client) {
+  return getOnlineMusicNodes(client).length > 0;
+}
+
+async function waitForOnlineMusicNode(client, timeoutMs = 8000) {
+  if (hasOnlineMusicNode(client)) return true;
+
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    if (hasOnlineMusicNode(client)) return true;
+  }
+
+  return false;
+}
+
+function createMusicServiceOfflineEmbed(client) {
+  const nodes = client.kazagumo?.shoukaku?.nodes;
+  const nodeNames = nodes?.size
+    ? [...nodes.values()].map(node => `${node.name}: ${getNodeStateName(node.state)}`).join('\n')
+    : 'No Lavalink nodes are configured.';
+
+  return createEmbed('error', client)
+    .setTitle('Music service offline')
+    .setDescription('No Lavalink node is online yet, so I cannot search or join voice right now.')
+    .addFields(
+      { name: 'Current nodes', value: nodeNames.slice(0, 1024) || 'No status available.' },
+      { name: 'What to do', value: 'Check your Lavalink host/password, restart the bot, or use a stable private Lavalink node.' },
+    );
+}
+
+function getNodeStateName(state) {
+  const names = ['CONNECTING', 'CONNECTED', 'DISCONNECTING', 'DISCONNECTED'];
+  return names[state] || `UNKNOWN(${state})`;
+}
+
+async function resolveMusicChannel(client, player, settings = null) {
+  const channelIds = [
+    settings?.music_text_channel_id,
+    player.textId,
+  ].filter((channelId, index, values) => channelId && values.indexOf(channelId) === index);
+
+  for (const channelId of channelIds) {
+    const channel = client.channels.cache.get(channelId)
+      || await client.channels.fetch(channelId).catch(() => null);
+    if (channel?.isTextBased?.()) {
+      player.textId = channel.id;
+      return channel;
+    }
+  }
+
+  return null;
+}
+
 async function safeJoin(kazagumo, guildId, channelId, shardId = 0) {
+  if (!hasOnlineMusicNode({ kazagumo })) {
+    throw new Error('No Lavalink nodes are online.');
+  }
+
   const existing = kazagumo.players.get(guildId);
+  if (existing?.voiceId === channelId) return existing;
+
   if (existing) {
     await existing.destroy();
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -56,10 +175,16 @@ function handleKazagumoEvents(client) {
       console.log(`[Kazagumo/Shoukaku] Node "${name}" connected.`);
     })
     .on('error', (name, error) => {
-      console.error(`[Kazagumo/Shoukaku] Node "${name}" error: ${error?.message || error}`);
+      const message = error?.message || error;
+      if (String(message).includes('ECONNRESET')) {
+        console.warn(`[Kazagumo/Shoukaku] Node "${name}" reset the connection. Shoukaku will retry.`);
+        return;
+      }
+      console.error(`[Kazagumo/Shoukaku] Node "${name}" error: ${message}`);
     })
     .on('close', (name, code, reason) => {
-      console.warn(`[Kazagumo/Shoukaku] Node "${name}" closed (${code}). Reason: ${reason}`);
+      const detail = reason ? ` Reason: ${reason}` : '';
+      console.warn(`[Kazagumo/Shoukaku] Node "${name}" closed (${code}). Reconnecting if available.${detail}`);
     })
     .on('disconnect', (name, moved) => {
       console.warn(`[Kazagumo/Shoukaku] Node "${name}" disconnected. Moved: ${moved}`);
@@ -68,42 +193,48 @@ function handleKazagumoEvents(client) {
   client.kazagumo
     .on('playerStart', async (player, track) => {
       try {
-        const channel = client.channels.cache.get(player.textId);
-        if (!channel) return;
-
         const previous = player.data.get('nowPlaying');
         if (previous) player.data.set('previousTrack', previous);
         player.data.set('nowPlaying', track);
+        player.data.set('skipVotes', new Set());
 
         const requester = track.requester;
         const requesterTag = requester?.tag || requester?.username || 'Unknown User';
         const requesterAvatar = requester?.displayAvatarURL?.() || null;
+        const settings = await ServerMusicSettings.getSettings(player.guildId);
+        const channel = await resolveMusicChannel(client, player, settings);
 
-        const embed = createEmbed('music', client)
-          .setAuthor({
-            name: 'Now Playing',
-            iconURL: requesterAvatar || client.user.displayAvatarURL(),
-          })
-          .setTitle(track.title)
-          .setURL(track.uri)
-          .setColor(0xB86BFF)
-          .setThumbnail(track.thumbnail || client.user.displayAvatarURL())
-          .addFields(
-            { name: 'Artist', value: `> **${track.author || 'Unknown'}**`, inline: true },
-            { name: 'Duration', value: `> **${formatDuration(track.length)}**`, inline: true },
-            { name: 'Requested by', value: `> **${requesterTag}**`, inline: true },
-          )
-          .setFooter({
-            text: `Looki Music • ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`,
-            iconURL: client.user.displayAvatarURL(),
-          });
+        if (channel && settings?.announce_songs !== false) {
+          const embed = createEmbed('music', client)
+            .setAuthor({
+              name: 'Now Playing',
+              iconURL: requesterAvatar || client.user.displayAvatarURL(),
+            })
+            .setTitle(track.title)
+            .setURL(track.uri)
+            .setColor(0xB86BFF)
+            .setThumbnail(track.thumbnail || client.user.displayAvatarURL())
+            .addFields(
+              { name: 'Artist', value: `> **${track.author || 'Unknown'}**`, inline: true },
+              { name: 'Duration', value: `> **${formatDuration(track.length)}**`, inline: true },
+              { name: 'Requested by', value: `> **${requesterTag}**`, inline: true },
+            )
+            .setFooter({
+              text: `Looki Music | ${new Date().toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              })}`,
+              iconURL: client.user.displayAvatarURL(),
+            });
 
-        const message = await channel.send({
-          embeds: [embed],
-          components: buildMusicControls(),
-        }).catch(error => MusicLogger.logError('playerStart - send', error, { guildId: player.guildId }));
+          const message = await sendMusicMessage(client, channel, {
+            embeds: [embed],
+            components: buildMusicControls(),
+          }, 'playerStart - send', player.guildId);
 
-        if (message) player.data.set('messageId', message.id);
+          if (message) player.data.set('messageId', message.id);
+        }
 
         MusicLogger.logSuccess('playerStart', `Now playing ${track.title}`, {
           guildId: player.guildId,
@@ -119,7 +250,7 @@ function handleKazagumoEvents(client) {
           }, track.length || 0);
         }
       } catch (error) {
-        MusicLogger.logError('playerStart', error);
+        MusicLogger.logError('playerStart', error, { guildId: player.guildId });
       }
     })
     .on('playerEnd', async player => {
@@ -129,13 +260,14 @@ function handleKazagumoEvents(client) {
       try {
         await disablePreviousControls(client, player);
 
-        const channel = client.channels.cache.get(player.textId);
-        if (channel) {
-          await channel.send({
+        const settings = await ServerMusicSettings.getSettings(player.guildId);
+        const channel = await resolveMusicChannel(client, player, settings);
+        if (channel && settings?.announce_songs !== false) {
+          await sendMusicMessage(client, channel, {
             embeds: [createEmbed('music', client)
               .setTitle('Queue finished')
               .setDescription('All songs have been played. Add more with `/play`.')],
-          }).catch(error => MusicLogger.logError('playerEmpty - send', error));
+          }, 'playerEmpty - send', player.guildId);
         }
 
         if (player.data.get('stay247')) {
@@ -143,24 +275,25 @@ function handleKazagumoEvents(client) {
           return;
         }
 
-        player.destroy();
+        await player.destroy();
       } catch (error) {
-        MusicLogger.logError('playerEmpty', error);
+        MusicLogger.logError('playerEmpty', error, { guildId: player.guildId });
       }
     })
     .on('playerError', async (player, track, error) => {
       try {
         console.error(`[Kazagumo] Player error: ${error?.message || error}`);
-        const channel = client.channels.cache.get(player.textId);
+        const settings = await ServerMusicSettings.getSettings(player.guildId);
+        const channel = await resolveMusicChannel(client, player, settings);
         if (channel) {
-          await channel.send({
+          await sendMusicMessage(client, channel, {
             embeds: [createEmbed('error', client)
               .setTitle('Track error')
               .setDescription(`Failed to play **${track?.title || 'Unknown'}**. Skipping...`)],
-          }).catch(() => null);
+          }, 'playerError - send', player.guildId);
         }
       } catch (sendError) {
-        MusicLogger.logError('playerError', sendError);
+        MusicLogger.logError('playerError', sendError, { guildId: player.guildId });
       }
     });
 }
@@ -169,8 +302,9 @@ async function disablePreviousControls(client, player) {
   const messageId = player.data.get('messageId');
   if (!messageId) return;
 
-  const channel = client.channels.cache.get(player.textId);
-  if (!channel) return;
+  const settings = await ServerMusicSettings.getSettings(player.guildId);
+  const channel = await resolveMusicChannel(client, player, settings);
+  if (!channel || !canSendMusicMessage(channel, client).ok) return;
 
   const message = await channel.messages.fetch(messageId).catch(() => null);
   if (!message) return;
@@ -184,4 +318,15 @@ async function disablePreviousControls(client, player) {
   player.data.delete('messageId');
 }
 
-module.exports = { buildMusicControls, handleKazagumoEvents, safeJoin };
+module.exports = {
+  buildMusicControls,
+  canSendMusicMessage,
+  createMusicServiceOfflineEmbed,
+  getOnlineMusicNodes,
+  handleKazagumoEvents,
+  hasOnlineMusicNode,
+  resolveMusicChannel,
+  safeJoin,
+  sendMusicMessage,
+  waitForOnlineMusicNode,
+};

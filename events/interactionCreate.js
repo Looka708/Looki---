@@ -2,6 +2,7 @@ const UserFavorites = require('../models/UserFavorites');
 const ServerMusicSettings = require('../models/ServerMusicSettings');
 const { createEmbed } = require('../utils/embedBuilder');
 const { createMusicEmbed } = require('../utils/musicEmbed');
+const { canControlMusic, requestSkipVote } = require('../utils/musicCommandUtils');
 
 module.exports = {
   name: 'interactionCreate',
@@ -83,10 +84,16 @@ async function handleMusicButtons(interaction, client) {
         if (!player.queue.current) {
           return musicButtonReply(interaction, client, 'Nothing is playing', 'Add a song with `/play`.', 'error');
         }
+        if (!await canControlMusic(interaction, player)) {
+          const vote = await requestSkipVote(interaction, client, player);
+          return interaction.editReply({ embeds: [vote.embed] });
+        }
+        player.data.set('skipVotes', new Set());
         player.skip();
         return musicButtonReply(interaction, client, 'Skipped', 'Moving to the next track.');
 
       case 'music_previous': {
+        if (!await requireButtonControl(interaction, client, player)) return;
         const previous = player.data.get('previousTrack');
         if (!previous) {
           return musicButtonReply(
@@ -103,7 +110,9 @@ async function handleMusicButtons(interaction, client) {
       }
 
       case 'music_stop':
+        if (!await requireButtonControl(interaction, client, player)) return;
         player.queue.clear();
+        player.data.set('skipVotes', new Set());
         if (player.data.get('stay247')) {
           if (player.queue.current) player.skip();
           return musicButtonReply(
@@ -117,6 +126,7 @@ async function handleMusicButtons(interaction, client) {
         return musicButtonReply(interaction, client, 'Music stopped', 'The queue was cleared and I left voice.');
 
       case 'music_vol_up': {
+        if (!await requireButtonControl(interaction, client, player)) return;
         const volume = Math.min((player.volume || 100) + 10, 100);
         player.setVolume(volume);
         await ServerMusicSettings.setDefaultVolume(interaction.guildId, volume).catch(() => null);
@@ -124,6 +134,7 @@ async function handleMusicButtons(interaction, client) {
       }
 
       case 'music_vol_down': {
+        if (!await requireButtonControl(interaction, client, player)) return;
         const volume = Math.max((player.volume || 100) - 10, 0);
         player.setVolume(volume);
         await ServerMusicSettings.setDefaultVolume(interaction.guildId, volume).catch(() => null);
@@ -131,6 +142,7 @@ async function handleMusicButtons(interaction, client) {
       }
 
       case 'music_shuffle':
+        if (!await requireButtonControl(interaction, client, player)) return;
         if (!player.queue.length) {
           return musicButtonReply(interaction, client, 'Queue is empty', 'There are no upcoming tracks to shuffle.', 'error');
         }
@@ -138,6 +150,7 @@ async function handleMusicButtons(interaction, client) {
         return musicButtonReply(interaction, client, 'Queue shuffled', 'The upcoming tracks have been shuffled.');
 
       case 'music_loop': {
+        if (!await requireButtonControl(interaction, client, player)) return;
         const modes = ['none', 'track', 'queue'];
         const currentIndex = modes.indexOf(player.loop);
         const nextMode = modes[(currentIndex + 1) % modes.length];
@@ -146,6 +159,7 @@ async function handleMusicButtons(interaction, client) {
       }
 
       case 'music_clear':
+        if (!await requireButtonControl(interaction, client, player)) return;
         if (!player.queue.length) {
           return musicButtonReply(interaction, client, 'Queue is empty', 'The upcoming queue is already empty.', 'error');
         }
@@ -181,4 +195,17 @@ async function handleMusicButtons(interaction, client) {
       ).catch(() => null);
     }
   }
+}
+
+async function requireButtonControl(interaction, client, player) {
+  if (await canControlMusic(interaction, player)) return true;
+
+  await musicButtonReply(
+    interaction,
+    client,
+    'DJ control required',
+    'Only the song requester, configured DJ role, or a server moderator can use this control.',
+    'error',
+  );
+  return false;
 }

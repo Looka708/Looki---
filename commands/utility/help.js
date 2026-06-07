@@ -2,25 +2,42 @@ const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed } = require('../../utils/embedBuilder');
 
 const CATEGORY_LABELS = {
-  config: '⚙️ Configuration',
-  fun: '🌸 Fun',
-  leveling: '🏆 Leveling',
-  moderation: '🛡️ Moderation',
-  music: '🎵 Music',
-  utility: '🧰 Utility',
+  config: 'Configuration',
+  fun: 'Fun',
+  leveling: 'Leveling',
+  moderation: 'Moderation',
+  music: 'Music',
+  utility: 'Utility',
 };
 
 function findCategory(client, commandName) {
   const command = client.commands.get(commandName);
   if (command?.category) return command.category;
 
-  // Commands are grouped by folder in this project. Map known names without
-  // duplicating descriptions, which continue to come from SlashCommandBuilder.
   const groups = {
     config: ['setlog', 'settings'],
     leveling: ['givexp', 'leaderboard', 'rank', 'removexp'],
     moderation: ['ban', 'clear', 'kick', 'lock', 'slowmode', 'tempban', 'timeout', 'unlock', 'warn'],
-    music: ['247', 'favorites', 'loop', 'musicstats', 'nowplaying', 'pause', 'play', 'playlist', 'queue', 'remove', 'resume', 'seek', 'skip', 'stop', 'volume'],
+    music: [
+      '247',
+      'clearqueue',
+      'favorites',
+      'loop',
+      'musicsettings',
+      'musicstats',
+      'nowplaying',
+      'pause',
+      'play',
+      'playlist',
+      'queue',
+      'remove',
+      'resume',
+      'seek',
+      'shuffle',
+      'skip',
+      'stop',
+      'volume',
+    ],
     fun: ['8ball', 'blush', 'coinflip', 'cry', 'dance', 'giveaway', 'highfive', 'hug', 'kiss', 'pat', 'poll', 'roll', 'say', 'slap', 'wink'],
   };
 
@@ -30,7 +47,7 @@ function findCategory(client, commandName) {
 function formatCommands(commands) {
   return commands
     .sort((a, b) => a.data.name.localeCompare(b.data.name))
-    .map(command => `\`/${command.data.name}\` — ${command.data.description}`)
+    .map(command => `\`/${command.data.name}\` | ${command.data.description}`)
     .join('\n');
 }
 
@@ -63,7 +80,7 @@ module.exports = {
         .setTitle(CATEGORY_LABELS[requestedCategory])
         .setDescription(formatCommands(matching) || 'No commands are available in this category.')
         .setFooter({
-          text: `${matching.length} command(s) • Use /help to see every category`,
+          text: `${matching.length} command(s) | Use /help to see every category`,
           iconURL: client.user.displayAvatarURL(),
         });
 

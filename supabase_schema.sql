@@ -143,12 +143,28 @@ CREATE TABLE IF NOT EXISTS server_playlists (
   songs JSONB DEFAULT '[]'::JSONB,
   is_public BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(guild_id, name)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(guild_id, creator_id, name)
 );
 
 CREATE INDEX IF NOT EXISTS idx_server_playlists_guild_id ON server_playlists(guild_id);
 CREATE INDEX IF NOT EXISTS idx_server_playlists_creator ON server_playlists(creator_id);
+
+ALTER TABLE server_playlists
+  DROP CONSTRAINT IF EXISTS server_playlists_guild_id_name_key;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'server_playlists_guild_creator_name_key'
+  ) THEN
+    ALTER TABLE server_playlists
+      ADD CONSTRAINT server_playlists_guild_creator_name_key
+      UNIQUE (guild_id, creator_id, name);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS music_activity_log (
   id BIGSERIAL PRIMARY KEY,

@@ -50,7 +50,19 @@ class ServerMusicSettings {
         .select();
 
       if (error) throw error;
-      return data?.[0];
+      if (data?.[0]) return data[0];
+
+      const { data: created, error: upsertError } = await supabase
+        .from('server_music_settings')
+        .upsert({
+          guild_id: guildId,
+          [setting]: value,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'guild_id' })
+        .select();
+
+      if (upsertError) throw upsertError;
+      return created?.[0];
     } catch (error) {
       console.error(`[ServerMusicSettings] Error updating ${setting}:`, error);
       throw error;
@@ -59,6 +71,21 @@ class ServerMusicSettings {
 
   static async setDJRole(guildId, roleId) {
     return this.updateSetting(guildId, 'dj_role_id', roleId);
+  }
+
+  static async setAnnouncements(guildId, enabled) {
+    return this.updateSetting(guildId, 'announce_songs', enabled);
+  }
+
+  static async setLoopDefault(guildId, mode) {
+    if (![0, 1, 2].includes(mode)) {
+      throw new Error('Loop mode must be 0, 1, or 2');
+    }
+    return this.updateSetting(guildId, 'loop_default_mode', mode);
+  }
+
+  static async setMusicTextChannel(guildId, channelId) {
+    return this.updateSetting(guildId, 'music_text_channel_id', channelId);
   }
 
   static async toggleAnnouncements(guildId) {

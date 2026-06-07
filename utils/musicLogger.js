@@ -12,22 +12,28 @@ class MusicLogger {
   };
 
   static categorizeError(error) {
-    const message = error?.message || error?.toString() || '';
+    const message = String(error?.message || error || '').toLowerCase();
     const errorCode = error?.code || '';
 
+    if (errorCode === 50013 || message.includes('missing permissions') || message.includes('permission denied')) {
+      return this.ERROR_TYPES.PERMISSION;
+    }
     if (message.includes('429') || errorCode === 'RATE_LIMITED') {
       return this.ERROR_TYPES.RATE_LIMIT;
     }
-    if (message.includes('codec') || message.includes('INVALID_AUDIO')) {
+    if (message.includes('codec') || message.includes('invalid_audio')) {
       return this.ERROR_TYPES.CODEC;
     }
     if (message.includes('not found') || message.includes('404')) {
       return this.ERROR_TYPES.NOT_FOUND;
     }
-    if (message.includes('permission') || message.includes('403')) {
-      return this.ERROR_TYPES.PERMISSION;
-    }
-    if (message.includes('ECONNREFUSED') || message.includes('ETIMEDOUT') || message.includes('network')) {
+    if (
+      message.includes('econnreset') ||
+      message.includes('econnrefused') ||
+      message.includes('etimedout') ||
+      message.includes('network') ||
+      message.includes('websocket')
+    ) {
       return this.ERROR_TYPES.NETWORK;
     }
     if (
@@ -44,13 +50,13 @@ class MusicLogger {
 
   static getErrorMessage(errorType) {
     const messages = {
-      [this.ERROR_TYPES.NETWORK]: '🌐 Connection issue - trying again in a moment...',
-      [this.ERROR_TYPES.CODEC]: '🎵 Audio codec error - might try a different source',
-      [this.ERROR_TYPES.PLAYBACK]: '⚠️ Playback error - trying next song...',
-      [this.ERROR_TYPES.RATE_LIMIT]: '⏳ Service is busy - waiting before retry...',
-      [this.ERROR_TYPES.NOT_FOUND]: '🔍 Song not found - might be removed or private',
-      [this.ERROR_TYPES.PERMISSION]: '🔒 Permission denied - service might be restricted',
-      [this.ERROR_TYPES.UNKNOWN]: '❓ Something went wrong - check logs',
+      [this.ERROR_TYPES.NETWORK]: 'Connection issue. Trying again in a moment.',
+      [this.ERROR_TYPES.CODEC]: 'Audio codec error. Try a different source.',
+      [this.ERROR_TYPES.PLAYBACK]: 'Playback error. Trying the next song.',
+      [this.ERROR_TYPES.RATE_LIMIT]: 'Music service is busy. Waiting before retrying.',
+      [this.ERROR_TYPES.NOT_FOUND]: 'Song not found. It might be removed or private.',
+      [this.ERROR_TYPES.PERMISSION]: 'Permission denied. Check bot permissions.',
+      [this.ERROR_TYPES.UNKNOWN]: 'Something went wrong. Check logs.',
     };
 
     return messages[errorType] || messages[this.ERROR_TYPES.UNKNOWN];
@@ -66,16 +72,14 @@ class MusicLogger {
         error_message: errorData?.message || null,
       });
     } catch (error) {
-      console.error('❌ [MusicLogger] Failed to log activity:', error?.message);
+      console.error('[MusicLogger] Failed to log activity:', error?.message);
     }
   }
 
   static logError(context, error, additionalInfo = {}) {
     const errorType = this.categorizeError(error);
-    const timestamp = new Date().toISOString();
-
     const logEntry = {
-      timestamp,
+      timestamp: new Date().toISOString(),
       context,
       type: errorType,
       message: error?.message || error?.toString(),
@@ -84,20 +88,19 @@ class MusicLogger {
       ...additionalInfo,
     };
 
-    console.error(`🥺 [Music Error - ${errorType}]`, logEntry);
+    console.error(`[Music Error - ${errorType}]`, logEntry);
     return logEntry;
   }
 
   static logSuccess(context, message, additionalInfo = {}) {
-    const timestamp = new Date().toISOString();
     const logEntry = {
-      timestamp,
+      timestamp: new Date().toISOString(),
       context,
       message,
       ...additionalInfo,
     };
 
-    console.log(`🌸 [Music Success]`, logEntry);
+    console.log('[Music Success]', logEntry);
     return logEntry;
   }
 }

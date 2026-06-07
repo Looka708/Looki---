@@ -4,7 +4,12 @@ const {
   SlashCommandBuilder,
 } = require('discord.js');
 const ServerMusicSettings = require('../../models/ServerMusicSettings');
-const { safeJoin } = require('../../utils/audioPlayer');
+const {
+  createMusicServiceOfflineEmbed,
+  hasOnlineMusicNode,
+  safeJoin,
+  waitForOnlineMusicNode,
+} = require('../../utils/audioPlayer');
 const { createMusicEmbed } = require('../../utils/musicEmbed');
 
 module.exports = {
@@ -71,6 +76,12 @@ module.exports = {
         }
 
         if (!player || player.voiceId !== voiceChannel.id) {
+          if (!hasOnlineMusicNode(client) && !await waitForOnlineMusicNode(client)) {
+            return interaction.editReply({
+              embeds: [createMusicServiceOfflineEmbed(client)],
+            });
+          }
+
           player = await safeJoin(
             client.kazagumo,
             interaction.guildId,
@@ -81,12 +92,14 @@ module.exports = {
         player.textId = interaction.channelId;
         player.data.set('stay247', true);
 
-        await ServerMusicSettings.set247Mode(
+        const settings = await ServerMusicSettings.set247Mode(
           interaction.guildId,
           true,
           voiceChannel.id,
           interaction.channelId,
         );
+        if (settings?.default_volume !== undefined) player.setVolume(settings.default_volume);
+        player.setLoop(['none', 'track', 'queue'][settings?.loop_default_mode] || 'none');
 
         return interaction.editReply({
           embeds: [createMusicEmbed(client, {

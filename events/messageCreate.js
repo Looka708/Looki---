@@ -2,8 +2,8 @@ const { addXP, getOrCreateXP } = require('../models/XP');
 const { getOrCreateConfig } = require('../models/ServerConfig');
 const { EmbedBuilder, Collection } = require('discord.js');
 
-// Global command cooldowns
 const commandCooldowns = new Collection();
+const xpCooldowns = new Map();
 
 const {
   hasProfanity,
@@ -11,24 +11,19 @@ const {
   hasSuspiciousLinks,
   hasMassMentions,
   cleanupSpamTracker,
-  filterProfanity,
 } = require('../utils/automod');
 
-// Cooldown tracking for XP (per user-guild)
-const xpCooldowns = new Map();
-const XP_COOLDOWN_MS = 60000; // 1 minute
-const XP_GAIN = 10; // XP per message
-const LEVEL_UP_THRESHOLD = 100; // XP for level up
+const XP_COOLDOWN_MS = 60000;
+const XP_GAIN = 10;
+
 module.exports = {
   name: 'messageCreate',
   execute: async (message, client) => {
     if (message.author.bot || !message.guild) return;
 
-    // 🌸 1. Fetch Server Config (Dynamic Prefix Support) ───────────
     const config = await getOrCreateConfig(message.guildId);
-    const prefix = config?.prefix || 'p!'; // Fallback to p!
+    const prefix = config?.prefix || 'p!';
 
-    // 🌸 2. Check for Prefix or Bot Mention ───────────
     const mentionRegex = new RegExp(`^<@!?${client.user.id}> `);
     const hasMention = message.content.match(mentionRegex);
     const usedPrefix = hasMention ? hasMention[0] : prefix;
@@ -38,28 +33,27 @@ module.exports = {
       return;
     }
 
-    // 🌸 3. Handle AutoMod checks
-    await handleAutoMod(message, client);
-
-    // 🌸 4. Handle XP gain from messages
-    await handleXPGain(message, client);
+    await handleAutoMod(message);
+    await handleXPGain(message);
   },
 };
 
 async function handlePrefixCommand(message, client, prefix) {
-  const args = message.content.slice(prefix.length).trim().split(/ +/);
-  const commandName = args.shift().toLowerCase();
+  const args = message.content.slice(prefix.length).trim().split(/ +/).filter(Boolean);
+  const commandName = args.shift()?.toLowerCase();
+  if (!commandName) return;
 
   const command = client.prefixCommands.get(commandName);
   if (!command) return;
 
-  // -- Global Rate Limiting Cooldown --
-  const cooldownAmount = 3000; // 3 seconds
+  const cooldownAmount = 3000;
   if (commandCooldowns.has(message.author.id)) {
     const expirationTime = commandCooldowns.get(message.author.id) + cooldownAmount;
     if (Date.now() < expirationTime) {
       const timeLeft = (expirationTime - Date.now()) / 1000;
-      return message.reply({ content: `🥺 Please wait ${timeLeft.toFixed(1)} more second(s) before putting another command!` })
+      return message.reply({
+        content: `Please wait ${timeLeft.toFixed(1)} more second(s) before using another command.`,
+      })
         .then(msg => setTimeout(() => msg.delete().catch(() => {}), 3000))
         .catch(() => {});
     }
@@ -67,80 +61,16 @@ async function handlePrefixCommand(message, client, prefix) {
   commandCooldowns.set(message.author.id, Date.now());
   setTimeout(() => commandCooldowns.delete(message.author.id), cooldownAmount);
 
-  // 🌸 Interaction Proxy (Mimics SlashCommandInteraction) ───────────
-  // This allows the same command.execute() to work for both Slash and Prefix!
-  const interactionProxy = {
-    isChatInputCommand: () => true, // Some commands might check this
-    guildId: message.guildId,
-    channelId: message.channelId,
-    guild: message.guild,
-    channel: message.channel,
-    member: message.member,
-    user: message.author,
-    author: message.author, // Fallback
-    createdTimestamp: message.createdTimestamp,
-    deferred: false,
-    replied: false,
-    ephemeral: false,
-
-    // Proxy methods for interaction-like behavior
-    reply: async (payload) => {
-      interactionProxy.replied = true;
-      return message.reply(payload);
-    },
-    deferReply: async (options) => {
-      interactionProxy.deferred = true;
-      if (options?.ephemeral) interactionProxy.ephemeral = true;
-      // We don't really defer on prefix, but some commands call it then editReply
-      // So let's send a placeholder or just wait
-      const thinking = await message.reply('🌸 *Processing command...*');
-      interactionProxy.lastMessage = thinking;
-      return thinking;
-    },
-    editReply: async (payload) => {
-      interactionProxy.replied = true;
-      if (interactionProxy.lastMessage) {
-        return interactionProxy.lastMessage.edit(payload);
-      }
-      return message.reply(payload);
-    },
-    followUp: async (payload) => {
-      return message.reply(payload);
-    },
-    deleteReply: async () => {
-      if (interactionProxy.lastMessage) return interactionProxy.lastMessage.delete().catch(() => {});
-    },
-
-    // Proxy for options
-    options: {
-      getString: (name) => {
-        if (!args.length) return null;
-        return args.join(' ');
-      },
-      getUser: (name) => {
-        const mention = message.mentions.users.first();
-        return mention || client.users.cache.get(args[0]);
-      },
-      getMember: (name) => {
-        const mention = message.mentions.members.first();
-        return mention || message.guild.members.cache.get(args[0]);
-      },
-      getInteger: (name) => parseInt(args[0]),
-      getNumber: (name) => parseFloat(args[0]),
-      getBoolean: (name) => ['true', 'on', 'yes'].includes(args[0]?.toLowerCase()),
-      getChannel: (name) => message.mentions.channels.first() || message.guild.channels.cache.get(args[0])
-    }
-  };
+  const interactionProxy = createInteractionProxy(message, client, args);
 
   try {
-    // 🌸 Execute command with proxy
     await command.execute(interactionProxy, client);
   } catch (error) {
     console.error(`ERROR in Prefix Command (${commandName}):`, error);
     const errorEmbed = new EmbedBuilder()
       .setColor(0xF4C2C2)
-      .setTitle('❌ Error')
-      .setDescription('hmm that didn\'t work :( check the prefix/args and try again?')
+      .setTitle('Command error')
+      .setDescription('That did not work. Check the prefix command arguments and try again.')
       .setTimestamp();
 
     if (interactionProxy.deferred || interactionProxy.replied) {
@@ -151,69 +81,123 @@ async function handlePrefixCommand(message, client, prefix) {
   }
 }
 
-async function handleAutoMod(message, client) {
-  try {
-    // Get server config
-    const config = await getOrCreateConfig(message.guildId);
+function createInteractionProxy(message, client, args) {
+  let subcommandUsed = false;
 
+  const proxy = {
+    isChatInputCommand: () => true,
+    guildId: message.guildId,
+    channelId: message.channelId,
+    guild: message.guild,
+    channel: message.channel,
+    member: message.member,
+    user: message.author,
+    author: message.author,
+    createdTimestamp: message.createdTimestamp,
+    deferred: false,
+    replied: false,
+    lastMessage: null,
+
+    reply: async (payload) => {
+      proxy.replied = true;
+      return message.reply(payload);
+    },
+    deferReply: async (options = {}) => {
+      proxy.deferred = true;
+      proxy.lastMessage = await message.reply('*Processing command...*');
+      return proxy.lastMessage;
+    },
+    editReply: async (payload) => {
+      proxy.replied = true;
+      if (proxy.lastMessage) return proxy.lastMessage.edit(payload);
+      return message.reply(payload);
+    },
+    followUp: async (payload) => message.reply(payload),
+    deleteReply: async () => {
+      if (proxy.lastMessage) return proxy.lastMessage.delete().catch(() => {});
+      return null;
+    },
+
+    options: {
+      getSubcommand: () => {
+        subcommandUsed = true;
+        return args[0];
+      },
+      getString: () => {
+        const values = subcommandUsed ? args.slice(1) : args;
+        return values.join(' ') || null;
+      },
+      getUser: () => {
+        const mention = message.mentions.users.first();
+        const values = subcommandUsed ? args.slice(1) : args;
+        return mention || client.users.cache.get(values[0]) || null;
+      },
+      getMember: () => {
+        const mention = message.mentions.members.first();
+        const values = subcommandUsed ? args.slice(1) : args;
+        return mention || message.guild.members.cache.get(values[0]) || null;
+      },
+      getInteger: () => {
+        const values = subcommandUsed ? args.slice(1) : args;
+        const value = Number.parseInt(values[0], 10);
+        return Number.isNaN(value) ? null : value;
+      },
+      getNumber: () => {
+        const values = subcommandUsed ? args.slice(1) : args;
+        const value = Number.parseFloat(values[0]);
+        return Number.isNaN(value) ? null : value;
+      },
+      getBoolean: () => {
+        const values = subcommandUsed ? args.slice(1) : args;
+        return ['true', 'on', 'yes', 'enable', 'enabled'].includes(values[0]?.toLowerCase());
+      },
+      getChannel: () => {
+        const values = subcommandUsed ? args.slice(1) : args;
+        return message.mentions.channels.first() || message.guild.channels.cache.get(values[0]) || null;
+      },
+    },
+  };
+
+  return proxy;
+}
+
+async function handleAutoMod(message) {
+  try {
+    const config = await getOrCreateConfig(message.guildId);
     if (!config?.automod_enabled) return;
 
-    // Check for profanity
     if (config?.automod_antiswear && hasProfanity(message.content, true)) {
       await message.delete().catch(() => {});
-
-      try {
-        await message.author.send(
-          `🤖 Your message in **${message.guild.name}** was deleted for containing profanity.`
-        );
-      } catch (e) {
-        // DM failed, silently ignore
-      }
+      await message.author.send(
+        `Your message in **${message.guild.name}** was deleted for containing profanity.`,
+      ).catch(() => {});
       return;
     }
 
-    // Check for spam
     if (config?.automod_antispam) {
       const spamCheck = checkSpam(message.guildId, message.author.id, message.channelId, 5);
       if (spamCheck.isSpam) {
         await message.delete().catch(() => {});
-
-        try {
-          await message.author.send(
-            `🤖 You've been temporarily muted in **${message.guild.name}** for spam.`
-          );
-        } catch (e) {
-          // DM failed, silently ignore
-        }
+        await message.author.send(
+          `You've been temporarily muted in **${message.guild.name}** for spam.`,
+        ).catch(() => {});
         return;
       }
     }
 
-    // Check for suspicious links
     if (config?.automod_antilinks && hasSuspiciousLinks(message.content)) {
       await message.delete().catch(() => {});
-
-      try {
-        await message.author.send(
-          `🤖 Your message in **${message.guild.name}** was deleted for containing suspicious links.`
-        );
-      } catch (e) {
-        // DM failed, silently ignore
-      }
+      await message.author.send(
+        `Your message in **${message.guild.name}** was deleted for containing suspicious links.`,
+      ).catch(() => {});
       return;
     }
 
-    // Check for mass mentions
     if (hasMassMentions(message)) {
       await message.delete().catch(() => {});
-
-      try {
-        await message.author.send(
-          `🤖 Your message in **${message.guild.name}** was deleted for mass mentions.`
-        );
-      } catch (e) {
-        // DM failed, silently ignore
-      }
+      await message.author.send(
+        `Your message in **${message.guild.name}** was deleted for mass mentions.`,
+      ).catch(() => {});
       return;
     }
 
@@ -223,48 +207,29 @@ async function handleAutoMod(message, client) {
   }
 }
 
-async function handleXPGain(message, client) {
+async function handleXPGain(message) {
   try {
-    // Check cooldown
     const cooldownKey = `${message.guildId}-${message.author.id}`;
     const now = Date.now();
     const cooldownExpiry = xpCooldowns.get(cooldownKey);
+    if (cooldownExpiry && now < cooldownExpiry) return;
 
-    if (cooldownExpiry && now < cooldownExpiry) {
-      return; // Still on cooldown
-    }
-
-    // Get server config
     const config = await getOrCreateConfig(message.guildId);
+    if (config?.xp_blacklist_channels?.includes(message.channelId)) return;
 
-    // Check if channel is blacklisted
-    if (config?.xp_blacklist_channels?.includes(message.channelId)) {
-      return;
-    }
-
-    // Check if user has blacklisted role
-    if (config?.xp_blacklist_roles && config.xp_blacklist_roles.length > 0) {
+    if (config?.xp_blacklist_roles?.length) {
       const hasBlacklistedRole = message.member?.roles.cache.some(role =>
-        config.xp_blacklist_roles.includes(role.id)
-      );
+        config.xp_blacklist_roles.includes(role.id));
       if (hasBlacklistedRole) return;
     }
 
-    // Add XP to user
     const previousUser = await getOrCreateXP(message.guildId, message.author.id);
     const previousLevel = previousUser?.level || 0;
-
-    const updated = await addXP(
-      message.guildId,
-      message.author.id,
-      XP_GAIN
-    );
-
+    const updated = await addXP(message.guildId, message.author.id, XP_GAIN);
     const newLevel = updated?.level || 0;
 
-    // Check for level up
     if (newLevel > previousLevel) {
-      const levelUpMessage = config?.levelup_message || '🎉 {user} just reached level {level}!';
+      const levelUpMessage = config?.levelup_message || '{user} just reached level {level}!';
       const formattedMessage = levelUpMessage
         .replace('{user}', `<@${message.author.id}>`)
         .replace('{level}', newLevel.toString());
@@ -274,18 +239,14 @@ async function handleXPGain(message, client) {
         : message.channel;
 
       if (levelUpChannel?.isSendable?.()) {
-        try {
-          await levelUpChannel.send(formattedMessage);
-        } catch (e) {
-          console.error('Failed to send level up message:', e);
-        }
+        await levelUpChannel.send(formattedMessage).catch(error => {
+          console.error('Failed to send level up message:', error);
+        });
       }
     }
 
-    // Set cooldown
     xpCooldowns.set(cooldownKey, now + XP_COOLDOWN_MS);
 
-    // Clean up old cooldowns (every 100 messages)
     if (Math.random() < 0.01) {
       for (const [key, time] of xpCooldowns.entries()) {
         if (now > time) xpCooldowns.delete(key);

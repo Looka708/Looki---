@@ -1,9 +1,10 @@
 const TemporaryBan = require('../models/TemporaryBan');
 const ServerMusicSettings = require('../models/ServerMusicSettings');
-const { safeJoin } = require('../utils/audioPlayer');
+const { safeJoin, waitForOnlineMusicNode } = require('../utils/audioPlayer');
+const { ActivityType } = require('discord.js');
 
 module.exports = {
-  name: 'ready',
+  name: 'clientReady',
   once: true,
   async execute(client) {
     console.log('Looki is online.');
@@ -12,9 +13,9 @@ module.exports = {
     await restore247Connections(client);
 
     const statuses = [
-      { name: 'watching over the server', type: 'WATCHING' },
-      { name: 'protecting Looki servers', type: 'PLAYING' },
-      { name: 'keeping music ready', type: 'WATCHING' },
+      { name: 'over the server', type: ActivityType.Watching },
+      { name: 'music for everyone', type: ActivityType.Playing },
+      { name: 'the queue', type: ActivityType.Watching },
     ];
 
     let currentStatus = 0;
@@ -33,6 +34,10 @@ module.exports = {
 async function restore247Connections(client) {
   try {
     const settingsList = await ServerMusicSettings.get247Guilds();
+    if (settingsList.length && !await waitForOnlineMusicNode(client, 30000)) {
+      console.warn('[24/7] Skipping restore because no Lavalink node is online.');
+      return;
+    }
 
     for (const settings of settingsList) {
       try {
@@ -50,6 +55,8 @@ async function restore247Connections(client) {
         player.textId = settings.music_text_channel_id || null;
         player.data.set('stay247', true);
         if (settings.default_volume !== undefined) player.setVolume(settings.default_volume);
+        const loopModes = ['none', 'track', 'queue'];
+        player.setLoop(loopModes[settings.loop_default_mode] || 'none');
         console.log(`[24/7] Restored ${guild.name} -> ${voiceChannel.name}`);
       } catch (error) {
         console.error(`[24/7] Failed to restore guild ${settings.guild_id}:`, error.message);
