@@ -1,0 +1,93 @@
+<svg width="1600" height="520" viewBox="0 0 1600 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="20" x2="1510" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#160E2B"/>
+      <stop offset="0.48" stop-color="#2D164B"/>
+      <stop offset="1" stop-color="#15132D"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="260" y1="50" x2="1300" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF8FAB"/>
+      <stop offset="0.5" stop-color="#B86BFF"/>
+      <stop offset="1" stop-color="#7BDFF2"/>
+    </linearGradient>
+    <linearGradient id="disc" x1="1110" y1="100" x2="1460" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF8FAB"/>
+      <stop offset="0.48" stop-color="#B86BFF"/>
+      <stop offset="1" stop-color="#66D9EF"/>
+    </linearGradient>
+    <radialGradient id="halo">
+      <stop stop-color="#B86BFF" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#B86BFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur60" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#05020D" flood-opacity="0.5"/>
+    </filter>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" stroke="#FFFFFF" stroke-opacity="0.035"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="520" rx="34" fill="url(#bg)"/>
+  <rect width="1600" height="520" rx="34" fill="url(#grid)"/>
+
+  <circle cx="220" cy="60" r="250" fill="#FF8FAB" fill-opacity="0.13" filter="url(#blur60)"/>
+  <circle cx="1300" cy="440" r="300" fill="#7BDFF2" fill-opacity="0.11" filter="url(#blur60)"/>
+  <ellipse cx="1240" cy="255" rx="350" ry="310" fill="url(#halo)"/>
+
+  <g opacity="0.76">
+    <circle cx="75" cy="78" r="5" fill="#FFB3C6"/>
+    <circle cx="102" cy="104" r="3" fill="#7BDFF2"/>
+    <circle cx="930" cy="85" r="4" fill="#FFB3C6"/>
+    <circle cx="1510" cy="88" r="5" fill="#B86BFF"/>
+    <circle cx="1005" cy="450" r="3" fill="#7BDFF2"/>
+    <path d="M960 126L967 143L984 150L967 157L960 174L953 157L936 150L953 143L960 126Z" fill="#FFB3C6"/>
+    <path d="M1480 335L1485 347L1497 352L1485 357L1480 369L1475 357L1463 352L1475 347L1480 335Z" fill="#7BDFF2"/>
+  </g>
+
+  <g transform="translate(420 82)">
+    <rect width="102" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <circle cx="22" cy="21" r="6" fill="#72C69B"/>
+    <text x="38" y="27" fill="#DFF8EB" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="700">ONLINE</text>
+  </g>
+
+  <g transform="translate(100 155)">
+    <text fill="#FFFFFF" font-family="Segoe UI, Arial, sans-serif" font-size="112" font-weight="800" letter-spacing="-5">Looki</text>
+    <rect x="4" y="126" width="500" height="7" rx="3.5" fill="url(#glow)"/>
+    <text x="5" y="184" fill="#E9DDF8" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="600">
+      A polished Discord bot for every server.
+    </text>
+    <text x="5" y="229" fill="#BFB0D4" font-family="Segoe UI, Arial, sans-serif" font-size="23">
+      Music  •  Moderation  •  Leveling  •  Giveaways  •  Utility
+    </text>
+  </g>
+
+  <g transform="translate(105 420)">
+    <rect width="188" height="48" rx="15" fill="#FF8FAB"/>
+    <text x="94" y="31" text-anchor="middle" fill="#21102F" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="800">DISCORD.JS</text>
+    <rect x="204" width="180" height="48" rx="15" fill="#B86BFF"/>
+    <text x="294" y="31" text-anchor="middle" fill="#180D29" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="800">LAVALINK</text>
+    <rect x="400" width="180" height="48" rx="15" fill="#7BDFF2"/>
+    <text x="490" y="31" text-anchor="middle" fill="#102333" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="800">SUPABASE</text>
+  </g>
+
+  <g transform="translate(1095 90)" filter="url(#shadow)">
+    <circle cx="205" cy="170" r="172" fill="#0D091C" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="3"/>
+    <circle cx="205" cy="170" r="140" fill="url(#disc)" fill-opacity="0.92"/>
+    <circle cx="205" cy="170" r="106" fill="#171029" fill-opacity="0.8"/>
+    <circle cx="205" cy="170" r="74" fill="#B86BFF" fill-opacity="0.3" stroke="#FFFFFF" stroke-opacity="0.18"/>
+    <circle cx="205" cy="170" r="29" fill="#F8E9FF"/>
+    <circle cx="205" cy="170" r="10" fill="#2B1745"/>
+    <path d="M194 133V185.5C184.8 180.8 171 184.8 171 195C171 205.8 186.2 210.2 196.5 203.5C202 200 204 194.5 204 188V151L237 143V175.5C227.8 170.8 214 174.8 214 185C214 195.8 229.2 200.2 239.5 193.5C245 190 247 184.5 247 178V126L194 139V133Z" fill="#FFFFFF"/>
+  </g>
+
+  <g transform="translate(1000 370)">
+    <rect width="510" height="82" rx="24" fill="#FFFFFF" fill-opacity="0.075" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <circle cx="44" cy="41" r="22" fill="#B86BFF"/>
+    <path d="M37 31L54 41L37 51V31Z" fill="white"/>
+    <text x="80" y="35" fill="#FFFFFF" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700">Reliable music controls</text>
+    <text x="80" y="59" fill="#BFB0D4" font-family="Segoe UI, Arial, sans-serif" font-size="16">Queues, playlists, DJ roles, voting and 24/7 voice</text>
+  </g>
+</svg>
